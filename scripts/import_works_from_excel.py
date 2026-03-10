@@ -9,6 +9,7 @@ C=Объём, D=ед. изм., E=Процент, F=План. дата, G=Вып�
   python scripts/import_works_from_excel.py work1.xlsx --project-id 9 [--dry-run]
   python scripts/import_works_from_excel.py path/to/work1.xlsx --project-id 9 --building-sheet "6 корпус:Корпус 6"
 """
+
 from __future__ import annotations
 
 import argparse
@@ -91,7 +92,11 @@ def _effective_rows(ws, max_rows=None):
             if (r1, c1) in merge_map:
                 mr, mc = merge_map[(r1, c1)]
                 # 0-based индексы
-                val = rows[mr - 1][mc - 1] if mr - 1 < len(rows) and mc - 1 < len(rows[mr - 1]) else row[ci]
+                val = (
+                    rows[mr - 1][mc - 1]
+                    if mr - 1 < len(rows) and mc - 1 < len(rows[mr - 1])
+                    else row[ci]
+                )
             else:
                 val = row[ci]
             effective.append(val)
@@ -120,7 +125,10 @@ def _load_row_rules(base_dir: str) -> dict[int, dict]:
         with open(template_path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception as exc:  # noqa: BLE001
-        print(f"Не удалось прочитать шаблон строк из {template_path}: {exc}", file=sys.stderr)
+        print(
+            f"Не удалось прочитать шаблон строк из {template_path}: {exc}",
+            file=sys.stderr,
+        )
         return {}
 
     rules = {}
@@ -172,14 +180,27 @@ def run_import(
             sys.exit(1)
 
         if clean and not dry_run:
-            db.session.execute(text("DELETE FROM work_progress WHERE work_id IN (SELECT id FROM works WHERE project_id = :pid)"), {"pid": project_id})
-            db.session.execute(text("DELETE FROM works WHERE project_id = :pid"), {"pid": project_id})
+            db.session.execute(
+                text(
+                    "DELETE FROM work_progress WHERE work_id IN (SELECT id FROM works WHERE project_id = :pid)"
+                ),
+                {"pid": project_id},
+            )
+            db.session.execute(
+                text("DELETE FROM works WHERE project_id = :pid"), {"pid": project_id}
+            )
             db.session.commit()
             print("Таблицы works и work_progress очищены по проекту.")
 
-        buildings = {b.name.strip().lower(): b for b in Building.query.filter_by(project_id=project_id).all()}
+        buildings = {
+            b.name.strip().lower(): b
+            for b in Building.query.filter_by(project_id=project_id).all()
+        }
         if not buildings:
-            print("У проекта нет корпусов. Создайте корпуса в приложении.", file=sys.stderr)
+            print(
+                "У проекта нет корпусов. Создайте корпуса в приложении.",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         row_rules = _load_row_rules(base_dir)
@@ -261,7 +282,7 @@ def run_import(
             unit_col, percent_col, planned_col, execution_col = 3, 4, 5, 6
             # Попробуем найти колонку "Категория"/"Раздел"/"Тип"/"Этап"/"Группа"
             category_col = None
-            category_header_markers = ('категор', 'раздел', 'тип', 'этап', 'группа')
+            category_header_markers = ("категор", "раздел", "тип", "этап", "группа")
             for idx, h in enumerate(headers):
                 if h is None:
                     continue
@@ -281,8 +302,8 @@ def run_import(
                 elif is_excel_date_column(h):
                     date_columns.append((col_idx, excel_serial_to_date(h)))
 
-            current_category = None      # Активный раздел работ по заголовкам "Демонтажные работы" / "Общестроительные работы" / "Инженерные системы"
-            current_subsection = None    # Подраздел инженерных систем (электрика, вентиляция и т.п.) по строкам без объёма внутри раздела "Инженерные системы"
+            current_category = None  # Активный раздел работ по заголовкам "Демонтажные работы" / "Общестроительные работы" / "Инженерные системы"
+            current_subsection = None  # Подраздел инженерных систем (электрика, вентиляция и т.п.) по строкам без объёма внутри раздела "Инженерные системы"
 
             for row_idx in range(header_row_idx + 1, len(rows)):
                 row = rows[row_idx]
@@ -298,13 +319,17 @@ def run_import(
                             current_category = rule["category"]
                         current_subsection = None
                         if verbose:
-                            print(f"  [row {excel_row}] заголовок раздела по шаблону: category={current_category!r}")
+                            print(
+                                f"  [row {excel_row}] заголовок раздела по шаблону: category={current_category!r}"
+                            )
                         continue
                     if rtype == "subsection":
                         # Строка-заголовок подраздела (обычно для инженерных систем)
                         if rule.get("category"):
                             current_category = rule["category"]
-                        current_subsection = rule.get("subsection") or current_subsection
+                        current_subsection = (
+                            rule.get("subsection") or current_subsection
+                        )
                         if verbose:
                             print(
                                 f"  [row {excel_row}] заголовок подраздела по шаблону: "
@@ -314,7 +339,9 @@ def run_import(
                     if rtype == "skip":
                         # Строку полностью игнорируем, даже если там есть объём
                         if verbose:
-                            print(f"  [row {excel_row}] строка помечена как skip в шаблоне — пропуск")
+                            print(
+                                f"  [row {excel_row}] строка помечена как skip в шаблоне — пропуск"
+                            )
                         continue
 
                 name = row[name_col] if name_col < len(row) else None
@@ -333,28 +360,38 @@ def run_import(
                 if volume is None or (isinstance(volume, (int, float)) and volume <= 0):
                     name_lower = name.lower()
                     # Заголовки разделов: "Демонтажные работы" / "Общестроительные работы" / "Инженерные системы"
-                    if 'демонтажные работы' in name_lower:
-                        current_category = 'Демонтажные работы'
+                    if "демонтажные работы" in name_lower:
+                        current_category = "Демонтажные работы"
                         current_subsection = None
-                    elif 'общестроительные работы' in name_lower:
-                        current_category = 'Общестроительные работы'
+                    elif "общестроительные работы" in name_lower:
+                        current_category = "Общестроительные работы"
                         current_subsection = None
-                    elif 'инженерные системы' in name_lower:
-                        current_category = 'Инженерные системы'
+                    elif "инженерные системы" in name_lower:
+                        current_category = "Инженерные системы"
                         current_subsection = None
                     # Подзаголовки инженерных систем: строки без объёма внутри раздела "Инженерные системы"
-                    elif current_category == 'Инженерные системы':
+                    elif current_category == "Инженерные системы":
                         # Пропускаем строку с заголовками столбцов, все остальные без объёма считаем названием подраздела
-                        if name_lower not in ('наименование', 'наименование системы', 'ед. изм.'):
+                        if name_lower not in (
+                            "наименование",
+                            "наименование системы",
+                            "ед. изм.",
+                        ):
                             current_subsection = name
                     # Все прочие строки без объёма (итоги и пр.) просто игнорируем.
                     if verbose:
-                        print(f"  [row {row_idx + 1}] '{name}' без объёма — пропуск (current_category={current_category!r}, current_subsection={current_subsection!r})")
+                        print(
+                            f"  [row {row_idx + 1}] '{name}' без объёма — пропуск (current_category={current_category!r}, current_subsection={current_subsection!r})"
+                        )
                     continue
                 unit = row[unit_col] if unit_col < len(row) else None
                 unit = str(unit).strip() if unit else None
                 planned_val = row[planned_col] if planned_col < len(row) else None
-                planned_date = excel_serial_to_date(planned_val) if planned_val is not None else None
+                planned_date = (
+                    excel_serial_to_date(planned_val)
+                    if planned_val is not None
+                    else None
+                )
                 pct = row[percent_col] if percent_col < len(row) else None
                 try:
                     percent_complete = float(pct) if pct is not None else None
@@ -404,26 +441,34 @@ def run_import(
 
                     if raw_category_value is not None:
                         s = str(raw_category_value).strip().lower()
-                        if 'демонтаж' in s:
-                            category = 'Демонтажные работы'
-                        elif 'инженер' in s or 'систем' in s or 'сет' in s:
-                            category = 'Инженерные системы'
-                        elif 'общестро' in s or 'общие строит' in s or 'общее строит' in s:
-                            category = 'Общестроительные работы'
+                        if "демонтаж" in s:
+                            category = "Демонтажные работы"
+                        elif "инженер" in s or "систем" in s or "сет" in s:
+                            category = "Инженерные системы"
+                        elif (
+                            "общестро" in s
+                            or "общие строит" in s
+                            or "общее строит" in s
+                        ):
+                            category = "Общестроительные работы"
 
                     # Если в явной колонке категория не задана — берём из текущего заголовка раздела
                     if category is None:
-                        category = current_category or 'Общестроительные работы'
+                        category = current_category or "Общестроительные работы"
 
                 # Подраздел инженерных систем: только для category = 'Инженерные системы'
                 system_subsection = None
-                if category == 'Инженерные системы':
+                if category == "Инженерные системы":
                     # В «линейном» режиме полагаемся только на текущий подзаголовок
                     # из шаблона/заголовков, без дополнительных привязок по имени.
                     system_subsection = current_subsection
 
                 if verbose:
-                    cat_src = f"столбец #{category_col + 1}" if raw_category_value is not None and category_col is not None else "по активному заголовку раздела"
+                    cat_src = (
+                        f"столбец #{category_col + 1}"
+                        if raw_category_value is not None and category_col is not None
+                        else "по активному заголовку раздела"
+                    )
                     print(
                         f"  [row {row_idx + 1}] '{name}' — категория: '{category}', подраздел: {system_subsection!r} "
                         f"({cat_src}, значение={raw_category_value!r}, current_category={current_category!r}, current_subsection={current_subsection!r})"
@@ -436,8 +481,12 @@ def run_import(
                 similar_target_work = None
                 similar_ratio = 0.0
                 if not existing_work and norm_name:
-                    for existing_norm, existing in by_building_names.get(building.id, []):
-                        ratio = difflib.SequenceMatcher(a=norm_name, b=existing_norm).ratio()
+                    for existing_norm, existing in by_building_names.get(
+                        building.id, []
+                    ):
+                        ratio = difflib.SequenceMatcher(
+                            a=norm_name, b=existing_norm
+                        ).ratio()
                         if ratio > 0.85 and ratio > similar_ratio:
                             similar_ratio = ratio
                             similar_target_work = existing
@@ -445,8 +494,14 @@ def run_import(
                 if dry_run:
                     target = existing_work or similar_target_work
                     if target:
-                        has_progress = WorkProgress.query.filter_by(work_id=target.id).count() > 0
-                        action = "UPDATE (по точному совпадению имени)" if existing_work else "UPDATE (по похожему имени)"
+                        has_progress = (
+                            WorkProgress.query.filter_by(work_id=target.id).count() > 0
+                        )
+                        action = (
+                            "UPDATE (по точному совпадению имени)"
+                            if existing_work
+                            else "UPDATE (по похожему имени)"
+                        )
                         print(
                             f"  [dry-run] {action} Work(id={target.id}): "
                             f"volume={volume}, unit={unit}, planned={planned_date}, %={percent_complete}, "
@@ -467,20 +522,25 @@ def run_import(
                         f"'{name}' → существующая '{similar_target_work.name}' (id={similar_target_work.id}). "
                     )
                     if not force_overwrite:
-                        print(msg + "Строка из Excel пропущена (без --force-overwrite).")
+                        print(
+                            msg + "Строка из Excel пропущена (без --force-overwrite)."
+                        )
                         continue
                     print(msg + "Обновляем существующую работу (--force-overwrite).")
                     existing_work = similar_target_work
 
                 if existing_work:
                     # Работа уже есть в БД
-                    has_progress = WorkProgress.query.filter_by(work_id=existing_work.id).count() > 0
+                    has_progress = (
+                        WorkProgress.query.filter_by(work_id=existing_work.id).count()
+                        > 0
+                    )
                     existing_work.volume = volume
                     existing_work.unit = unit
                     existing_work.planned_completion_date = planned_date
                     existing_work.percent_complete = percent_complete
                     existing_work.category = category or existing_work.category
-                    if category == 'Инженерные системы':
+                    if category == "Инженерные системы":
                         existing_work.system_subsection = system_subsection
                     # Порядок отображения в корпусе: всегда следуем порядку строк Excel
                     existing_work.sort_order = row_idx
@@ -560,20 +620,36 @@ def run_import(
 
         if not dry_run and (created_works > 0 or created_progress > 0):
             db.session.commit()
-            print(f"Создано работ: {created_works}, записей выполнения: {created_progress}.")
+            print(
+                f"Создано работ: {created_works}, записей выполнения: {created_progress}."
+            )
         elif dry_run:
-            print(f"[dry-run] Будет создано работ: {created_works}, записей выполнения: {created_progress}.")
+            print(
+                f"[dry-run] Будет создано работ: {created_works}, записей выполнения: {created_progress}."
+            )
 
     wb.close()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Импорт работ и ежедневного выполнения из Excel в works/work_progress")
+    parser = argparse.ArgumentParser(
+        description="Импорт работ и ежедневного выполнения из Excel в works/work_progress"
+    )
     parser.add_argument("filepath", help="Путь к файлу .xlsx")
     parser.add_argument("--project-id", type=int, required=True, help="ID проекта в БД")
     parser.add_argument("--dry-run", action="store_true", help="Не записывать в БД")
-    parser.add_argument("--clean", action="store_true", help="Перед импортом удалить все works и work_progress по проекту (TRUNCATE по проекту)")
-    parser.add_argument("--building-sheet", action="append", dest="building_sheet_map", metavar="SHEET:BUILDING", help="Маппинг лист→корпус")
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Перед импортом удалить все works и work_progress по проекту (TRUNCATE по проекту)",
+    )
+    parser.add_argument(
+        "--building-sheet",
+        action="append",
+        dest="building_sheet_map",
+        metavar="SHEET:BUILDING",
+        help="Маппинг лист→корпус",
+    )
     parser.add_argument(
         "--force-overwrite",
         action="store_true",

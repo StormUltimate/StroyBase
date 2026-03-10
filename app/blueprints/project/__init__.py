@@ -3,4 +3,4 @@
 
 from .routes import project_bp
 
-__all__ = ['project_bp']
+__all__ = ["project_bp"]

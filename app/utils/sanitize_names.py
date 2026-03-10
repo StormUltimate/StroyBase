@@ -4,23 +4,21 @@
 import re
 
 # Допустимые символы: кириллица, латиница, цифры, пробелы, -.,()/№
-_RE_ALLOWED = re.compile(r'[а-яА-ЯёЁa-zA-Z0-9\s\-.,()\/№]+', re.UNICODE)
+_RE_ALLOWED = re.compile(r"[а-яА-ЯёЁa-zA-Z0-9\s\-.,()\/№]+", re.UNICODE)
 _MIN_LENGTH = 2
-_JUNK_ONLY_DIGITS = re.compile(r'^[\d\s\-.,()\/]+$')
+_JUNK_ONLY_DIGITS = re.compile(r"^[\d\s\-.,()\/]+$")
 
 # Шаблоны сломанных префиксов (после санитизации): «Корпус» / «Этаж» в неправильной кодировке или латиницей.
 # Результат санитизации «Љ®аЇгб 6» → «а гб 6» (кириллица а, г, б проходят regex).
 _RE_BROKEN_KORPUS = re.compile(
-    r'^(?:а\s*г\s*б|а\s*гб|jb\s*@?\s*air|korpus|корпус)\s*(\d*)\s*$',
-    re.UNICODE
+    r"^(?:а\s*г\s*б|а\s*гб|jb\s*@?\s*air|korpus|корпус)\s*(\d*)\s*$", re.UNICODE
 )
 _RE_BROKEN_ETAZH = re.compile(
-    r'^(?:т\s*аж|аж|этаж|etazh)\s*(\d*)\s*$',
-    re.IGNORECASE | re.UNICODE
+    r"^(?:т\s*аж|аж|этаж|etazh)\s*(\d*)\s*$", re.IGNORECASE | re.UNICODE
 )
 
 
-def normalize_name(s, fallback=''):
+def normalize_name(s, fallback=""):
     """
     Санитизация названия для сохранения в БД и отображения.
     Удаляются управляющие символы и всё, кроме букв (кириллица/латиница), цифр, пробелов, -.,()/№.
@@ -32,13 +30,13 @@ def normalize_name(s, fallback=''):
         s = str(s)
     except (UnicodeDecodeError, TypeError):
         return fallback
-    s = ''.join(c for c in s if ord(c) >= 32 or c in '\t\n\r')
+    s = "".join(c for c in s if ord(c) >= 32 or c in "\t\n\r")
     s = s.strip()
     if not s:
         return fallback
     parts = _RE_ALLOWED.findall(s)
-    out = ' '.join(parts).strip()
-    out = re.sub(r'\s+', ' ', out)
+    out = " ".join(parts).strip()
+    out = re.sub(r"\s+", " ", out)
     if len(out) < _MIN_LENGTH:
         return fallback
     if _JUNK_ONLY_DIGITS.match(out):
@@ -62,13 +60,13 @@ def restore_known_patterns(cleaned_name, prefix_type, entity_id=None):
     if not s:
         return None
     num = None
-    if prefix_type == 'building':
+    if prefix_type == "building":
         m = _RE_BROKEN_KORPUS.match(s)
         if m:
             num = m.group(1).strip()
             n = int(num) if num else (entity_id if entity_id is not None else None)
             return f"Корпус {n}" if n is not None else "Корпус"
-    elif prefix_type == 'floor':
+    elif prefix_type == "floor":
         m = _RE_BROKEN_ETAZH.match(s)
         if m:
             num = m.group(1).strip()
@@ -79,5 +77,5 @@ def restore_known_patterns(cleaned_name, prefix_type, entity_id=None):
 
 def normalized_key_for_dedup(name):
     """Ключ для дедупликации: нормализованное имя в нижнем регистре."""
-    n = normalize_name(name, '')
-    return n.lower().strip() if n else ''
+    n = normalize_name(name, "")
+    return n.lower().strip() if n else ""

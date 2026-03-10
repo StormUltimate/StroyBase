@@ -4,23 +4,30 @@
 Запуск: python scripts/inspect_excel_structure.py work1.xlsx
 После запуска можно подстроить import_works_from_excel.py под реальные колонки.
 """
+
 import sys
 import os
 from datetime import datetime, date
+
 
 def excel_serial_to_date(serial):
     if serial is None:
         return None
     try:
         if isinstance(serial, (int, float)):
-            return date(1899, 12, 30) + __import__('datetime').timedelta(days=int(serial))
+            return date(1899, 12, 30) + __import__("datetime").timedelta(
+                days=int(serial)
+            )
         if isinstance(serial, datetime):
             return serial.date()
         if isinstance(serial, date):
             return serial
-        return date(1899, 12, 30) + __import__('datetime').timedelta(days=int(float(serial)))
+        return date(1899, 12, 30) + __import__("datetime").timedelta(
+            days=int(float(serial))
+        )
     except (ValueError, TypeError):
         return None
+
 
 def main():
     if len(sys.argv) < 2:
@@ -63,7 +70,14 @@ def main():
                 d = excel_serial_to_date(h)
                 print("  [%d] %s (Excel date) -> %s" % (i, h, d))
             else:
-                print("  [%d] %r (%s)" % (i, h if len(repr(h)) < 55 else repr(h)[:52] + "...", type(h).__name__))
+                print(
+                    "  [%d] %r (%s)"
+                    % (
+                        i,
+                        h if len(repr(h)) < 55 else repr(h)[:52] + "...",
+                        type(h).__name__,
+                    )
+                )
         # Пример данных
         data_start = hdr_row + 1
         if data_start < len(rows):
@@ -75,10 +89,14 @@ def main():
                     print("  [%d] %r" % (i, v))
         # Если лист корпуса и в первых 10 колонках заголовков нет текста/чисел — сырые значения
         is_building = "корпус" in name.lower()
-        has_any_header = any(
-            headers[i] is not None and str(headers[i]).strip()
-            for i in range(min(10, len(headers)))
-        ) if headers else False
+        has_any_header = (
+            any(
+                headers[i] is not None and str(headers[i]).strip()
+                for i in range(min(10, len(headers)))
+            )
+            if headers
+            else False
+        )
         if is_building and not has_any_header:
             print("(Лист корпуса: строки 0-18, колонки 0-18):")
             for ri, row in enumerate(rows[:19]):
@@ -98,6 +116,7 @@ def main():
                 print("  row%d: %s" % (ri, part))
     wb.close()
     print("\nГотово.")
+
 
 if __name__ == "__main__":
     main()

@@ -11,6 +11,7 @@
   python scripts/backfill_work_progress_to_date.py --date YYYY-MM-DD
   python scripts/backfill_work_progress_to_date.py --dry-run
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,16 +19,21 @@ import os
 import sys
 from datetime import date
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Залить существующий объём работ одним днём в work_progress на выбранную дату')
-    parser.add_argument('--date', required=True, help='Дата одной записи (YYYY-MM-DD)')
-    parser.add_argument('--dry-run', action='store_true', help='Только показать, что будет сделано')
+    parser = argparse.ArgumentParser(
+        description="Залить существующий объём работ одним днём в work_progress на выбранную дату"
+    )
+    parser.add_argument("--date", required=True, help="Дата одной записи (YYYY-MM-DD)")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Только показать, что будет сделано"
+    )
     args = parser.parse_args()
 
     try:
         target = date.fromisoformat(args.date)
     except ValueError:
-        print('Ошибка: дата должна быть в формате YYYY-MM-DD', file=sys.stderr)
+        print("Ошибка: дата должна быть в формате YYYY-MM-DD", file=sys.stderr)
         sys.exit(1)
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,17 +58,21 @@ def main():
                 skipped += 1
                 continue
             if args.dry_run:
-                print(f'  [dry-run] work_id={w.id} "{w.name}": добавить запись {target} с объёмом {vol}')
+                print(
+                    f'  [dry-run] work_id={w.id} "{w.name}": добавить запись {target} с объёмом {vol}'
+                )
                 added += 1
                 continue
             db.session.add(WorkProgress(work_id=w.id, date=target, daily_execution=vol))
             added += 1
         if not args.dry_run and added:
             db.session.commit()
-        print(f'Обработано: добавлено/обновлено {added}, пропущено (уже есть выполнение) {skipped}.')
+        print(
+            f"Обработано: добавлено/обновлено {added}, пропущено (уже есть выполнение) {skipped}."
+        )
         if args.dry_run and added:
-            print('Запустите без --dry-run, чтобы записать в БД.')
+            print("Запустите без --dry-run, чтобы записать в БД.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
