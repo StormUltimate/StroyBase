@@ -28,3 +28,22 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+# Временные файлы Windows / Office
+~$*
+*.tmp
+*.bak
+Thumbs.db
+
+# Локальные окружения и секреты
+.env*
+venv/
+.venv/
+*.pyc
+__pycache__/
+
+# Личные / тестовые данные (на всякий случай)
+*.xlsx
+*.docx
+*.pptx
+*.mp4
+app/static/media/
