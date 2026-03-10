@@ -1,0 +1,247 @@
+{# Вкладка «Сводка по объёмам работ»: только сводка по объёмам (план/факт) и общая таблица по видам работ + Excel. График/ГПП — отдельно. #}
+{# Контекст: project, works_summary_project, works_summary_buildings, works_aggregated_by_name #}
+<nav class="mb-3 small" aria-label="Навигация по разделу">
+    <a href="#works-summary" class="me-3">Сводка по объёмам</a>
+    <a href="#works-by-type" class="me-3">Сводка по видам работ</a>
+</nav>
+
+<div id="works-summary" class="mt-4" data-works-summary-url="{{ url_for('project.works_summary_json', project_id=project.id, graphs_building_id=request.args.get('graphs_building_id') or '', graphs_works_from=request.args.get('graphs_works_from') or '', graphs_works_to=request.args.get('graphs_works_to') or '') }}">
+    <h5 class="mb-3">Сводка по объёмам работ (план / факт)</h5>
+    <p class="text-muted small mb-2">Общий % по корпусу/объекту — среднее арифметическое процентов по всем работам: у каждой работы свой % = выполненное/объём×100, все работы участвуют в расчёте. Отклонение = факт − план.</p>
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <div class="card h-100 sb-summary-by-object">
+                <div class="card-body py-2">
+                    <h6 class="card-subtitle text-muted mb-1">По объекту</h6>
+                    <div class="progress" style="height: 1.5rem;">
+                        <div id="works-summary-project-bar" class="progress-bar {% if (works_summary_project.percent or 0) >= 100 %}bg-success{% elif (works_summary_project.percent or 0) >= 50 %}bg-info{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ [works_summary_project.percent or 0, 100]|min }}%;" aria-valuenow="{{ works_summary_project.percent or 0 }}" aria-valuemin="0" aria-valuemax="100">{% if works_summary_project.percent is not none %}{{ "%.1f"|format(works_summary_project.percent) }}%{% else %}N/A{% endif %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% for s in works_summary_buildings or [] %}
+        <div class="col-md-4 works-summary-building-card" data-building-id="{{ s.building.id }}">
+            <div class="card h-100">
+                <div class="card-body py-2">
+                    <h6 class="card-subtitle text-muted mb-1">{{ s.building.name }}</h6>
+                    <div class="progress" style="height: 1.5rem;">
+                        <div class="progress-bar {% if (s.percent or 0) >= 100 %}bg-success{% elif (s.percent or 0) >= 50 %}bg-info{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ [s.percent or 0, 100]|min }}%;" aria-valuenow="{{ s.percent or 0 }}" aria-valuemin="0" aria-valuemax="100">{% if s.percent is not none %}{{ "%.1f"|format(s.percent) }}%{% else %}N/A{% endif %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="table-responsive">
+        <table id="works-summary-table" class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Уровень</th>
+                    <th>Плановый объём</th>
+                    <th>Выполнено</th>
+                    <th>% выполнения</th>
+                    <th>Отклонение</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="works-summary-project-row" class="sb-summary-by-object-row">
+                    <td><strong>По объекту</strong></td>
+                    <td>{{ "%.2f"|format(works_summary_project.total_volume or 0) }}</td>
+                    <td>{{ "%.2f"|format(works_summary_project.total_executed or 0) }}</td>
+                    <td>{% if works_summary_project.percent is not none %}{{ "%.1f"|format(works_summary_project.percent) }}%{% else %}N/A{% endif %}</td>
+                    <td>{{ "%.2f"|format((works_summary_project.total_executed or 0) - (works_summary_project.total_volume or 0)) }}</td>
+                </tr>
+                {% for s in works_summary_buildings or [] %}
+                <tr class="works-summary-building-row" data-building-id="{{ s.building.id }}">
+                    <td>{{ s.building.name }}</td>
+                    <td>{{ "%.2f"|format(s.total_volume or 0) }}</td>
+                    <td>{{ "%.2f"|format(s.total_executed or 0) }}</td>
+                    <td>{% if s.percent is not none %}{{ "%.1f"|format(s.percent) }}%{% else %}N/A{% endif %}</td>
+                    <td>{{ "%.2f"|format((s.total_executed or 0) - (s.total_volume or 0)) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="works-by-type" class="mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h5 class="mb-0">Сводка по видам работ (план / факт по объекту)</h5>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('project.works_export_excel', project_id=project.id) }}" class="btn btn-success btn-sm">
+                <i class="bi bi-download me-1"></i>Выгрузить в Excel
+            </a>
+            <form action="{{ url_for('project.works_import_excel', project_id=project.id) }}" method="post" enctype="multipart/form-data" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="input-group input-group-sm mb-1">
+                    <input type="file" name="excel_file" class="form-control form-control-sm" accept=".xlsx,.xls" required aria-label="Файл Excel"/>
+                    <button type="submit" class="btn btn-primary">Загрузить из Excel</button>
+                </div>
+                <div class="form-check form-check-sm text-danger small">
+                    <input class="form-check-input" type="checkbox" value="1" id="cleanBeforeImport" name="clean_before_import">
+                    <label class="form-check-label" for="cleanBeforeImport">
+                        Полная замена: очистить все работы и ежедневное выполнение по объекту перед импортом
+                    </label>
+                </div>
+            </form>
+        </div>
+    </div>
+    <p class="text-muted small mb-2">
+        Работы добавляются в каждом корпусе отдельно; здесь — объединённые суммы по наименованию и разделу работ.
+        % = выполнено / плановый объём × 100.
+    </p>
+
+    {% set categories = [
+        ('Демонтажные работы', 'border-danger', 'bg-danger-subtle'),
+        ('Общестроительные работы', 'border-primary', 'bg-primary-subtle'),
+        ('Инженерные системы', 'border-success', 'bg-success-subtle'),
+    ] %}
+
+    <div class="accordion" id="worksByTypeAccordion">
+        {% set any_rows = false %}
+        {% for cat_name, border_class, header_bg in categories %}
+            {% set rows = works_aggregated_by_name|selectattr('category', 'equalto', cat_name)|list %}
+            {% set collapse_id = 'works-by-type-' ~ loop.index %}
+            <div class="accordion-item mb-2 {{ border_class }}">
+                <h2 class="accordion-header">
+                    <button class="accordion-button py-2 {{ header_bg }}" type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#{{ collapse_id }}"
+                            aria-expanded="true"
+                            aria-controls="{{ collapse_id }}">
+                        {{ cat_name }}
+                    </button>
+                </h2>
+                <div id="{{ collapse_id }}" class="accordion-collapse collapse show" data-bs-parent="#worksByTypeAccordion">
+                    <div class="accordion-body p-2">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Наименование (вид работ)</th>
+                                        <th>Ед. изм.</th>
+                                        <th class="text-end">Плановый объём</th>
+                                        <th class="text-end">Выполнено</th>
+                                        <th class="text-end">% выполнения</th>
+                                        <th class="text-end">Отклонение</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if rows %}
+                                        {% set any_rows = true %}
+                                        {% if cat_name == 'Инженерные системы' %}
+                                            {# Для инженерных систем сначала группируем по подразделам #}
+                                            {% set total_vol = 0 %}
+                                            {% set total_exec = 0 %}
+                                            {% for subgroup in rows|groupby('system_subsection') %}
+                                                {% set subsection_name = subgroup.grouper or 'Прочие системы' %}
+                                                {% set sub_rows = subgroup.list %}
+                                                {% set sub_vol = 0 %}
+                                                {% set sub_exec = 0 %}
+                                                {% for row in sub_rows %}
+                                                    {% set sub_vol = sub_vol + (row.total_volume or 0) %}
+                                                    {% set sub_exec = sub_exec + (row.total_executed or 0) %}
+                                                {% endfor %}
+                                                {% set total_vol = total_vol + sub_vol %}
+                                                {% set total_exec = total_exec + sub_exec %}
+                                                {% set pct_sub = (sub_exec / sub_vol * 100) if sub_vol > 0 else None %}
+                                                <tr class="table-secondary">
+                                                    <td colspan="6">
+                                                        <strong>{{ subsection_name }}</strong>
+                                                        {% if pct_sub is not none %}
+                                                            <span class="ms-2 text-muted small">({{ '%.1f'|format(pct_sub) }}%)</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% for row in sub_rows %}
+                                                    <tr>
+                                                        <td>{{ row.name }}</td>
+                                                        <td>{{ row.unit }}</td>
+                                                        <td class="text-end">{{ "%.2f"|format(row.total_volume or 0) }}</td>
+                                                        <td class="text-end">{{ "%.2f"|format(row.total_executed or 0) }}</td>
+                                                        <td class="text-end">
+                                                            {% if row.percent is not none %}
+                                                                {{ "%.1f"|format(row.percent) }}%
+                                                            {% else %}
+                                                                N/A
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-end">{{ "%.2f"|format(row.deviation or 0) }}</td>
+                                                    </tr>
+                                                {% endfor %}
+                                            {% endfor %}
+                                            <tr class="table-secondary fw-semibold">
+                                                <td colspan="2" class="text-end">Итого по разделу</td>
+                                                <td class="text-end">{{ "%.2f"|format(total_vol) }}</td>
+                                                <td class="text-end">{{ "%.2f"|format(total_exec) }}</td>
+                                                {% set pct_cat = (total_exec / total_vol * 100) if total_vol > 0 else None %}
+                                                <td class="text-end">
+                                                    {% if pct_cat is not none %}
+                                                        {{ "%.1f"|format(pct_cat) }}%
+                                                    {% else %}
+                                                        N/A
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end">{{ "%.2f"|format(total_exec - total_vol) }}</td>
+                                            </tr>
+                                        {% else %}
+                                            {% set total_vol = 0 %}
+                                            {% set total_exec = 0 %}
+                                            {% for row in rows %}
+                                                {% set total_vol = total_vol + (row.total_volume or 0) %}
+                                                {% set total_exec = total_exec + (row.total_executed or 0) %}
+                                                <tr>
+                                                    <td>{{ row.name }}</td>
+                                                    <td>{{ row.unit }}</td>
+                                                    <td class="text-end">{{ "%.2f"|format(row.total_volume or 0) }}</td>
+                                                    <td class="text-end">{{ "%.2f"|format(row.total_executed or 0) }}</td>
+                                                    <td class="text-end">
+                                                        {% if row.percent is not none %}
+                                                            {{ "%.1f"|format(row.percent) }}%
+                                                        {% else %}
+                                                            N/A
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-end">{{ "%.2f"|format(row.deviation or 0) }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                            <tr class="table-secondary fw-semibold">
+                                                <td colspan="2" class="text-end">Итого по разделу</td>
+                                                <td class="text-end">{{ "%.2f"|format(total_vol) }}</td>
+                                                <td class="text-end">{{ "%.2f"|format(total_exec) }}</td>
+                                                {% set pct_cat = (total_exec / total_vol * 100) if total_vol > 0 else None %}
+                                                <td class="text-end">
+                                                    {% if pct_cat is not none %}
+                                                        {{ "%.1f"|format(pct_cat) }}%
+                                                    {% else %}
+                                                        N/A
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end">{{ "%.2f"|format(total_exec - total_vol) }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-3">
+                                                Нет работ в этом разделе
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        {% if not any_rows %}
+            <div class="mt-3">
+                <div class="alert alert-light text-muted text-center py-3 mb-0">
+                    Нет данных. Добавьте работы в корпусах или загрузите из Excel.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+

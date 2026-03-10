@@ -1,0 +1,29 @@
+<!-- StroyBase: buildings/edit.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Редактировать корпус: {{ building.name }}</h2>
+    <form method="POST" action="{{ url_for('buildings.edit_building', building_id=building.id) }}" accept-charset="utf-8">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input type="text" class="form-control" name="name" value="{{ building.name or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Класс строения</label>
+            <input type="text" class="form-control" name="building_class" value="{{ building.building_class or '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Вид работ</label>
+            <input type="text" class="form-control" name="work_type" value="{{ building.work_type or '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Заметка</label>
+            <textarea class="form-control" name="note" rows="2">{{ building.note or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{{ url_for('buildings.view_building', building_id=building.id) }}" class="btn btn-secondary">Отмена</a>
+    </form>
+</div>
+{% endblock %}

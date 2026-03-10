@@ -1,0 +1,13 @@
+# app/extensions.py — StroyBase
+# Инициализация расширений Flask
+
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_bcrypt import Bcrypt
+from flask_migrate import Migrate
+
+# Создаём экземпляры расширений (они инициализируются в __init__.py)
+db = SQLAlchemy()
+login_manager = LoginManager()
+bcrypt = Bcrypt()
+migrate = Migrate()

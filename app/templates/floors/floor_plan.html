@@ -1,0 +1,356 @@
+<!-- StroyBase: floors/floor_plan.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Заголовок + кнопки -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <!-- КНОПКА НАЗАД -->
+            {% if back_url %}
+            <a href="{{ back_url }}" class="btn btn-outline-secondary me-3">
+                <i class="bi bi-arrow-left me-2"></i>Назад
+            </a>
+            {% else %}
+            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}" class="btn btn-outline-secondary me-3">
+                <i class="bi bi-arrow-left me-2"></i>Назад к этажу
+            </a>
+            {% endif %}
+            <h2 class="d-inline-block mb-0">План этажа: {{ floor.name }}</h2>
+            <span class="text-muted ms-2">( {{ plan.custom_name }} )</span>
+        </div>
+
+        <div>
+            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#plans"
+               class="btn btn-outline-primary me-2">
+                <i class="bi bi-pencil-square"></i> Редактировать планы
+            </a>
+            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#uploadPlanModal">
+                <i class="bi bi-upload"></i> Загрузить новый план
+            </button>
+
+            <button onclick="window.print()" class="btn btn-secondary me-2">
+                <i class="bi bi-printer"></i> Печать плана
+            </button>
+
+            {% if plans|length > 1 %}
+            <div class="dropdown d-inline-block">
+                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Выбрать план: {{ plan.custom_name }}
+                </button>
+                <ul class="dropdown-menu">
+                    {% for p in plans %}
+                    <li><a class="dropdown-item" href="{{ url_for('floors.floor_plan', floor_id=floor.id, plan_id=p.id) }}">{{ p.custom_name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if show_marks %}
+    <!-- Переключатель отображения маркеров -->
+    {% if not only_mark_id %}
+    <div class="d-flex justify-content-end mb-2">
+        <div class="form-check form-switch small">
+            <input class="form-check-input" type="checkbox" id="toggleAllMarks">
+            <label class="form-check-label" for="toggleAllMarks">
+                Отображать все маркеры на плане
+            </label>
+        </div>
+    </div>
+    <p class="text-muted small mb-3">
+        По умолчанию показаны только маркеры с привязанными фото, чтобы план оставался читаемым.
+    </p>
+    {% else %}
+    <p class="text-muted small mb-3 text-end">
+        Режим просмотра по маркеру: отображается только выбранный маркер.
+    </p>
+    {% endif %}
+    {% endif %}
+
+    <!-- САМА КАРТИНКА ПЛАНА + метки с фото -->
+    <div id="plan-to-print" class="text-center border rounded bg-white p-3">
+        {% if plan.image_path %}
+            <div class="position-relative d-inline-block">
+                <img src="{{ url_for('static', filename=plan.image_path) }}" 
+                     alt="{{ plan.custom_name }}" 
+                     class="img-fluid plan-image" 
+                     style="max-height: 80vh; width: auto; display: block;">
+                {% if show_marks %}
+                {% for m in marks %}
+                {% if m.x is not none and m.y is not none and (not only_mark_id or m.id == only_mark_id) %}
+                <div class="mark-overlay rounded-circle border border-2 border-primary bg-primary bg-opacity-25"
+                     style="position: absolute; left: {{ (m.x * 100 if m.x <= 1 else m.x) }}%; top: {{ (m.y * 100 if m.y <= 1 else m.y) }}%; width: 24px; height: 24px; transform: translate(-50%, -50%); cursor: pointer;"
+                     data-mark-id="{{ m.id }}"
+                     data-mark-docs="{{ m.documents.count() }}"
+                     data-has-docs="{{ 1 if m.documents.count() > 0 else 0 }}"
+                     title="Метка #{{ m.id }}{% if m.note %} — {{ m.note }}{% endif %} (фото: {{ m.documents.count() }})">
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="alert alert-warning">План не загружен</div>
+        {% endif %}
+    </div>
+
+    {% if show_marks %}
+    <!-- Список маркеров с привязанными фото (клик — показать фото в модалке) -->
+    <div class="mt-4" id="marks-with-photos-block">
+        <h5>Маркеры с привязанными фото</h5>
+        <div class="d-flex flex-wrap gap-2">
+            {% for m in marks %}
+            {% if m.documents.count() > 0 and (not only_mark_id or m.id == only_mark_id) %}
+            <button type="button" class="btn btn-outline-primary btn-sm mark-photos-btn {{ 'border-3 border-success' if highlight_mark_id == m.id }}"
+                    data-mark-id="{{ m.id }}"
+                    data-mark-note="{{ m.note or '' }}">
+                <span aria-hidden="true">📍</span> Маркер #{{ m.id }} ({{ m.documents.count() }})
+            </button>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Галерея фото (по желанию можно оставить или убрать) -->
+    {% if documents %}
+    <div class="mt-5">
+        <h4>Фотографии с метками ({{ documents|length }})</h4>
+        <div class="row g-3">
+            {% for doc in documents %}
+            <div class="col-md-3">
+                <div class="card h-100 shadow-sm">
+                    <img src="{{ url_for('static', filename=doc.thumbnail_path or doc.stored_path) }}" 
+                         class="card-img-top" style="height: 200px; object-fit: cover;">
+                    <div class="card-body d-flex flex-column">
+                        <p class="card-text small flex-grow-1">{{ doc.title or doc.filename }}</p>
+                        <small class="text-muted">{{ doc.uploaded_at.strftime('%d.%m.%Y') }}</small>
+                        <div class="mt-2">
+                            <a href="{{ url_for('floors.edit_photo', photo_id=doc.id) }}" 
+                               class="btn btn-sm btn-outline-primary">Редактировать фото</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Модалка: фото привязанные к метке -->
+<div class="modal fade" id="markPhotosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Фото по метке <span id="markPhotosModalTitle"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="markPhotosModalBody">
+                <!-- заполняется по клику на метку -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: добавить метку на плане -->
+<div class="modal fade" id="addMarkModal" tabindex="-1" aria-labelledby="addMarkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('floors.add_mark', floor_id=floor.id, plan_id=plan.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="x" id="addMarkX">
+                <input type="hidden" name="y" id="addMarkY">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addMarkModalLabel">Новая метка на плане</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Точка выбрана на плане этажа. Укажите комментарий (например: «ось 3–4, ось Б, отметка перекрытия».
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий к метке</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="Описание расположения метки"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить метку</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Скрытые блоки с фото по каждой метке (для подстановки в модалку) -->
+{% if show_marks %}
+{% for m in marks %}
+{% if m.documents.count() > 0 and (not only_mark_id or m.id == only_mark_id) %}
+<div id="mark-docs-{{ m.id }}" class="d-none mark-docs-content" data-mark-id="{{ m.id }}" data-mark-note="{{ m.note or '' }}">
+    <div class="row g-2">
+        {% for doc in m.documents %}
+        <div class="col-6 col-md-4">
+            <div class="card">
+                {% if doc.thumbnail_path %}
+                <img src="{{ url_for('static', filename=doc.thumbnail_path.lstrip('/')) }}" class="card-img-top" style="height: 120px; object-fit: cover;">
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center" style="height: 120px;"><i class="bi bi-image text-muted"></i></div>
+                {% endif %}
+                <div class="card-body p-2">
+                    <p class="card-text small mb-1">{{ doc.title or doc.filename }}</p>
+                    <a href="{{ url_for('floors.view_document', doc_id=doc.id) }}" target="_blank" class="btn btn-sm btn-outline-primary">Открыть</a>
+                    <a href="{{ url_for('floors.edit_photo', photo_id=doc.id) }}" class="btn btn-sm btn-outline-secondary">Редактировать</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+<!-- Модалка загрузки плана -->
+<div class="modal fade" id="uploadPlanModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data" 
+                  action="{{ url_for('floors.upload_floor_plan', floor_id=floor.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузить план этажа</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название плана</label>
+                        <input type="text" name="custom_name" class="form-control" value="Новый план" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Файл (PDF или изображение)</label>
+                        <input type="file" name="plan_file" class="form-control" required accept="image/*,.pdf">
+                    </div>
+                    <div class="mb-3 d-none" id="pdf-page">
+                        <label class="form-label">Номер страницы PDF</label>
+                        <input type="number" name="page_number" class="form-control" min="1" value="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- СТИЛИ ДЛЯ ПЕЧАТИ — ОСТАВЛЯЕМ ТОЛЬКО ПЛАН -->
+<style media="print">
+    body * { visibility: hidden; }
+    #plan-to-print, #plan-to-print * { visibility: visible; }
+    #plan-to-print {
+        position: absolute;
+        left: 0; top: 0;
+        width: 100%;
+    }
+    #plan-to-print img {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Показать поле страницы только для PDF
+    const fileInput = document.querySelector('input[name="plan_file"]');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const pdfBlock = document.getElementById('pdf-page');
+            if (file && file.name.toLowerCase().endsWith('.pdf')) {
+                pdfBlock.classList.remove('d-none');
+            } else {
+                pdfBlock.classList.add('d-none');
+            }
+        });
+    }
+
+    // Клик по метке (оверлей или кнопка) — показать модалку с фото
+    function showMarkPhotos(markId) {
+        const contentEl = document.getElementById('mark-docs-' + markId);
+        if (!contentEl) return;
+        const note = contentEl.getAttribute('data-mark-note') || '';
+        const titleEl = document.getElementById('markPhotosModalTitle');
+        const bodyEl = document.getElementById('markPhotosModalBody');
+        if (titleEl) titleEl.textContent = '#'.concat(markId, note ? ' — '.concat(note) : '');
+        if (bodyEl) bodyEl.innerHTML = contentEl.innerHTML;
+        new bootstrap.Modal(document.getElementById('markPhotosModal')).show();
+    }
+    document.querySelectorAll('.mark-photos-btn, .mark-overlay').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const markId = this.getAttribute('data-mark-id');
+            if (markId) showMarkPhotos(markId);
+        });
+    });
+
+    // Подсветка метки из URL ?highlight_mark=...
+    const highlightId = {{ highlight_mark_id|default('null')|tojson }};
+    if (highlightId) {
+        const btn = document.querySelector('.mark-photos-btn[data-mark-id="' + highlightId + '"]');
+        if (btn) {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            btn.classList.add('border-success', 'border-3');
+        }
+    }
+
+    // Переключатель "Отображать все маркеры"
+    const toggleAllMarks = document.getElementById('toggleAllMarks');
+    if (toggleAllMarks) {
+        const allOverlays = Array.from(document.querySelectorAll('.mark-overlay'));
+        function applyMarksVisibility() {
+            const showAll = toggleAllMarks.checked;
+            allOverlays.forEach(function (el) {
+                const hasDocs = el.getAttribute('data-has-docs') === '1';
+                if (!showAll && !hasDocs) {
+                    el.classList.add('d-none');
+                } else {
+                    el.classList.remove('d-none');
+                }
+            });
+        }
+        toggleAllMarks.addEventListener('change', applyMarksVisibility);
+        applyMarksVisibility();
+    }
+
+    // Добавление метки по клику на план
+    const planImage = document.querySelector('.plan-image');
+    if (planImage) {
+        planImage.addEventListener('click', function (e) {
+            // Игнорируем клик по уже существующей метке
+            if (e.target.closest('.mark-overlay')) {
+                return;
+            }
+            const rect = this.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+            const xInput = document.getElementById('addMarkX');
+            const yInput = document.getElementById('addMarkY');
+            if (!xInput || !yInput) return;
+            xInput.value = xPercent.toFixed(2);
+            yInput.value = yPercent.toFixed(2);
+            const addMarkModalEl = document.getElementById('addMarkModal');
+            if (addMarkModalEl) {
+                const modal = new bootstrap.Modal(addMarkModalEl);
+                modal.show();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

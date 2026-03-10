@@ -1,0 +1,93 @@
+<!-- StroyBase: shared/gallery_grid.html -->
+<!-- Галерея — открытие по клику на карточку; иконка метки и ссылка на план -->
+
+{% if docs %}
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for doc in docs %}
+    {% set filename_lower = doc.filename|lower %}
+    {% set is_video = filename_lower.endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm')) %}
+    {% set marker_url = None %}
+    {% set marker_label = None %}
+    {% if show_marker_link and doc.marker %}
+        {% set target_floor = floor or doc.floor or doc.marker.floor %}
+        {% if target_floor %}
+            {% set marker_url = url_for('floors.floor_plan', floor_id=target_floor.id, plan_id=doc.marker.plan_id, show_marks=1, only_mark=doc.mark_id, back=request.full_path) %}
+            {% set marker_label = 'Маркер #' ~ doc.marker.id %}
+        {% endif %}
+    {% endif %}
+    <div class="col">
+        <div class="card h-100 shadow-sm gallery-card" 
+             style="cursor: pointer;"
+             data-doc-id="{{ doc.id }}"
+             data-url="{{ url_for('static', filename=doc.stored_path.lstrip('/')) }}"
+             data-title="{{ doc.title or doc.filename }}"
+             data-is-video="{{ 'true' if is_video else 'false' }}"
+             data-has-marker="{{ 1 if marker_url else 0 }}"
+             data-marker-url="{{ marker_url or '' }}"
+             data-marker-embed-url="{{ (marker_url + ('&' if '?' in marker_url else '?') + 'embed=1') if marker_url else '' }}"
+             data-marker-label="{{ marker_label or '' }}">
+            {% if doc.thumbnail_path %}
+            <img src="{{ url_for('static', filename=doc.thumbnail_path.lstrip('/')) }}" class="card-img-top" style="object-fit: cover; height: 200px;">
+            {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <i class="bi bi-file-earmark fs-1 text-muted"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <h6 class="card-title mb-0">{{ doc.title or doc.filename }}</h6>
+                    {% if marker_url %}
+                    <a href="{{ marker_url }}" 
+                       class="btn btn-sm btn-outline-secondary text-nowrap" title="Открыть план с этой меткой" onclick="event.stopPropagation();">
+                        <span aria-hidden="true">📍</span> Маркер #{{ doc.marker.id }}
+                    </a>
+                    {% endif %}
+                </div>
+                <small class="text-muted d-block mt-1">Загружено: {{ doc.uploaded_at.strftime('%d.%m.%Y %H:%M') if doc.uploaded_at else '—' }}</small>
+                {% if doc.is_document_image %}
+                <span class="badge bg-info text-dark mt-1">Скан документа</span>
+                {% endif %}
+                {% if doc.file_modified_at %}
+                <small class="text-muted d-block">Дата съёмки / создания: {{ doc.file_modified_at.strftime('%d.%m.%Y') }}</small>
+                {% endif %}
+                {% if doc.floor_id %}
+                <a href="{{ url_for('floors.edit_photo', photo_id=doc.id) }}" class="btn btn-sm btn-outline-primary mt-2" onclick="event.stopPropagation();">Редактировать фото</a>
+                <form action="{{ url_for('project.delete_document', doc_id=doc.id) }}" method="POST" class="d-inline-block mt-2 ms-2"
+                      onsubmit="event.stopPropagation(); return confirm('Удалить фото «{{ doc.filename }}» из базы?\nФайл на диске останется.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        Удалить
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-files fs-1 d-block mb-3"></i>
+    <p>{{ empty_message or "Нет файлов в этом разделе" }}</p>
+</div>
+{% endif %}
+
+<script>
+document.querySelectorAll('.gallery-card').forEach(card => {
+    card.addEventListener('click', function() {
+        const docId = this.dataset.docId;
+        const url = this.dataset.url;
+        const title = this.dataset.title;
+        const isVideo = this.dataset.isVideo === 'true';
+
+        // Если это документ (не фото/видео) — открываем в новой вкладке
+        if (!isVideo && !this.querySelector('img')) {
+            window.open(url, '_blank');
+            return;
+        }
+
+        // Фото или видео — открываем в модалке
+        openModal(docId);
+    });
+});
+</script>

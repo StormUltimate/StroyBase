@@ -1,0 +1,110 @@
+{# StroyBase: боковая панель — иерархическое дерево (Объекты → Проекты → Корпуса → Этажи) + инструменты #}
+<aside class="stroybase-sidebar bg-dark text-white vh-100 position-fixed overflow-auto" id="stroybase-sidebar" style="width: 280px; z-index: 1000;">
+    <div class="p-3">
+        <div class="text-center mb-3">
+            <i class="bi bi-building-fill display-5 text-primary"></i>
+        </div>
+        <h2 class="text-center mb-4 fw-bold small">StroyBase</h2>
+
+        {% if current_user.is_authenticated and current_user.role != 'anonymous' %}
+
+        {# ========== Иерархия: Объекты → Проекты → Корпуса → Этажи ========== #}
+        <div class="mb-3">
+            <div class="nav-label text-white-50 small text-uppercase px-3 mb-2">Объекты</div>
+            <a href="{{ url_for('main.index') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint == 'main.index' %}bg-primary active{% endif %}">
+                <i class="bi bi-house-door me-2"></i>Все объекты
+            </a>
+
+            {% for project in nav_projects or [] %}
+            {% set is_project_active = (g_project and g_project.id == project.id) %}
+            <div class="sb-tree-item rounded mb-1">
+                <button class="btn btn-link text-white text-decoration-none w-100 text-start d-flex align-items-center py-2 px-3 rounded {% if not is_project_active %}collapsed{% endif %}" data-bs-toggle="collapse" data-bs-target="#sb-project-{{ project.id }}" aria-expanded="{{ 'true' if is_project_active else 'false' }}">
+                    <i class="bi bi-chevron-right sb-tree-chevron me-1"></i>
+                    <i class="bi bi-folder2 me-2"></i>
+                    <span class="text-truncate flex-grow-1">{{ project.name|truncate(22) }}</span>
+                </button>
+                <div class="collapse {% if is_project_active %}show{% endif %}" id="sb-project-{{ project.id }}">
+                    <div class="ps-3 pb-1">
+                        <a href="{{ url_for('project.dashboard', project_id=project.id) }}" class="d-block py-1 px-2 rounded small text-white-50 hover-bg {% if g_project and g_project.id == project.id and not g_building %}bg-primary text-white{% endif %}">
+                            <i class="bi bi-grid me-2"></i>Обзор объекта
+                        </a>
+                        {% for building in project.buildings %}
+                        {% set is_building_active = (g_building and g_building.id == building.id) %}
+                        <div class="sb-tree-item">
+                            <button class="btn btn-link text-white-50 text-decoration-none w-100 text-start d-flex align-items-center py-1 px-2 rounded {% if not is_building_active %}collapsed{% endif %} small" data-bs-toggle="collapse" data-bs-target="#sb-building-{{ building.id }}" aria-expanded="{{ 'true' if is_building_active else 'false' }}">
+                                <i class="bi bi-chevron-right sb-tree-chevron me-1"></i>
+                                <i class="bi bi-building me-2"></i>
+                                <span class="text-truncate">{{ building.name|truncate(18) }}</span>
+                            </button>
+                            <div class="collapse {% if is_building_active %}show{% endif %}" id="sb-building-{{ building.id }}">
+                                <div class="ps-3">
+                                    <a href="{{ url_for('buildings.view_building', building_id=building.id) }}" class="d-block py-1 px-2 rounded small text-white-50 hover-bg {% if g_building and g_building.id == building.id and not g_floor %}bg-primary text-white{% endif %}">
+                                        <i class="bi bi-folder me-2"></i>Обзор корпуса
+                                    </a>
+                                    {% for floor in building.floors %}
+                                    <div class="sb-tree-item">
+                                        <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}" class="d-block py-1 px-2 rounded small text-white-50 hover-bg {% if g_floor and g_floor.id == floor.id %}bg-primary text-white{% endif %}">
+                                            <i class="bi bi-layers me-2"></i>{{ floor.name|truncate(16) }}
+                                        </a>
+                                        {% if g_floor and g_floor.id == floor.id %}
+                                        <div class="ps-4">
+                                            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#media" class="d-block py-1 px-2 rounded small text-white-50 hover-bg">
+                                                <i class="bi bi-images me-2"></i>Фото и видео
+                                            </a>
+                                            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#plans" class="d-block py-1 px-2 rounded small text-white-50 hover-bg">
+                                                <i class="bi bi-map me-2"></i>Планы
+                                            </a>
+                                            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#tech" class="d-block py-1 px-2 rounded small text-white-50 hover-bg">
+                                                <i class="bi bi-clipboard-data me-2"></i>Тех. информация
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <hr class="border-secondary my-3">
+
+        {# ========== Инструменты ========== #}
+        <div class="nav-label text-white-50 small text-uppercase px-3 mb-2">Инструменты</div>
+        <a href="{{ url_for('main.dashboards') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint == 'main.dashboards' %}bg-primary active{% endif %}">
+            <i class="bi bi-graph-up me-2"></i>Общая информация
+        </a>
+        <a href="{{ url_for('movement.index') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint and request.endpoint.startswith('movement.') %}bg-primary active{% endif %}">
+            <i class="bi bi-truck me-2"></i>Движение материалов
+        </a>
+
+        {% if current_user.role == 'admin' %}
+        <hr class="border-secondary my-3">
+        <div class="nav-label text-white-50 small text-uppercase px-3 mb-2">Администрирование</div>
+        <a href="{{ url_for('admin.user_list') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint and request.endpoint.startswith('admin.user_') %}bg-success{% endif %}">
+            <i class="bi bi-people-fill me-2"></i>Пользователи
+        </a>
+        <a href="{{ url_for('admin.buildings_list') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint and request.endpoint.startswith('admin.buildings_') %}bg-success{% endif %}">
+            <i class="bi bi-building me-2"></i>Корпуса
+        </a>
+        {% endif %}
+
+        <hr class="border-secondary my-3">
+        <a href="{{ url_for('auth.logout') }}" class="nav-link text-white py-2 px-3 rounded bg-danger bg-opacity-75 text-center fw-bold">
+            <i class="bi bi-box-arrow-right me-2"></i>Выйти
+        </a>
+
+        {% else %}
+        <div class="text-center mt-5 pt-5">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg w-100 py-3 fs-6">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+            </a>
+            <p class="text-muted small mt-4">Объекты, корпуса, этажи, фото и материалы</p>
+        </div>
+        {% endif %}
+    </div>
+</aside>

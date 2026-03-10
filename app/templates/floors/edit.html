@@ -1,0 +1,109 @@
+<!-- StroyBase: floors/edit.html -->
+<!-- Добавлен выбор главного плана (select с plans, active_plan_id) -->
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Редактировать этаж: {{ floor.name }}</h2>
+    
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Основные данные -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Название этажа</label>
+                            <input type="text" class="form-control" name="name" 
+                                   value="{{ floor.name }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Тип этажа</label>
+                            <select class="form-select" name="floor_type">
+                                <option value="Обычный этаж" {% if floor.floor_type == 'Обычный этаж' %}selected{% endif %}>Обычный этаж</option>
+                                <option value="Подвал" {% if floor.floor_type == 'Подвал' %}selected{% endif %}>Подвал</option>
+                                <option value="Кровля" {% if floor.floor_type == 'Кровля' %}selected{% endif %}>Кровля</option>
+                                <option value="Технический этаж" {% if floor.floor_type == 'Технический этаж' %}selected{% endif %}>Технический этаж</option>
+                                <option value="Мансарда" {% if floor.floor_type == 'Мансарда' %}selected{% endif %}>Мансарда</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Технические характеристики -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Технические характеристики</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Полезная площадь (м²)</label>
+                                <input type="number" step="0.01" class="form-control" name="area_m2"
+                                       value="{{ floor.area_m2|default('', true) }}" 
+                                       placeholder="например: 842.50">
+                                <small class="text-muted">Жилая/полезная площадь без учёта стен и шахт</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">Общая площадь (м²)</label>
+                                <input type="number" step="0.01" class="form-control" name="total_area_m2"
+                                       value="{{ floor.total_area_m2|default('', true) }}" 
+                                       placeholder="например: 968.75">
+                                <small class="text-muted">Полная площадь включая все конструкции</small>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="form-label">Заметка / Особенности этажа</label>
+                            <textarea class="form-control" name="note" rows="3">{{ floor.note|default('') }}</textarea>
+                            <small class="text-muted">Например: высокий потолок 3.2 м, наличие колонн, технические помещения и т.д.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Привязка плана -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Привязать главный план</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Выберите план</label>
+                            <select class="form-select" name="plan_id">
+                                <option value="">Не привязывать</option>
+                                {% for plan in plans %}
+                                <option value="{{ plan.id }}" {% if plan.id == active_plan_id %}selected{% endif %}>
+                                    {{ plan.custom_name }} (загружен {{ plan.uploaded_at.strftime('%d.%m.%Y') }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Выбранный план станет активным (главным) для этажа</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="col-md-4">
+                <div class="d-grid gap-3">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save me-2"></i>Сохранить изменения
+                    </button>
+                    
+                    <a href="{{ url_for('buildings.view_building', building_id=floor.building.id) }}" 
+                       class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-2"></i>Отмена
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

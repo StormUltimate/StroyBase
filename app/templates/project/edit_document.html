@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <a href="{{ back_url }}" class="btn btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left me-2"></i>Назад к документам
+    </a>
+
+    <h3 class="mb-3">Редактировать документ</h3>
+
+    <div class="mb-3">
+        <span class="badge bg-light text-muted me-2">Проект: {{ project.name }}</span>
+        {% if building %}
+        <span class="badge bg-light text-muted me-2">Корпус: {{ building.name }}</span>
+        {% endif %}
+        {% if floor %}
+        <span class="badge bg-light text-muted">Этаж: {{ floor.name }}</span>
+        {% endif %}
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Название</label>
+                    <input type="text" name="title" class="form-control" value="{{ doc.title or '' }}" placeholder="Название документа">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Описание</label>
+                    <textarea name="description" class="form-control" rows="4" placeholder="Краткое описание, примечания">{{ doc.description or '' }}</textarea>
+                </div>
+                <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" id="isDocumentImageEdit" name="is_document_image" value="1"
+                           {% if doc.is_document_image %}checked{% endif %}>
+                    <label class="form-check-label" for="isDocumentImageEdit">
+                        Это скан документа (относить к списку документов, а не к фото)
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Корпус</label>
+                    <select name="building_id" class="form-select">
+                        <option value="">— Без корпуса —</option>
+                        {% for b in buildings %}
+                        <option value="{{ b.id }}" {% if doc.building_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Этаж</label>
+                    <select name="floor_id" class="form-select">
+                        <option value="">— Без этажа —</option>
+                        {% for f in project_floors %}
+                        <option value="{{ f.id }}" {% if doc.floor_id == f.id %}selected{% endif %}>
+                            {{ f.building.name }} — {{ f.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">При выборе этажа корпус подставится автоматически по этажу.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Виды работ / теги</label>
+                    <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto;">
+                        {% for dt in all_doc_types %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="work_type_ids" value="{{ dt.id }}"
+                                   id="doc-tag-{{ dt.id }}" {% if dt.id in current_types %}checked{% endif %}>
+                            <label class="form-check-label" for="doc-tag-{{ dt.id }}">{{ dt.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <small class="form-text text-muted d-block mb-1">Отметьте подходящие виды работ или задайте свои теги.</small>
+                    <input type="text" name="tags" class="form-control form-control-sm"
+                           placeholder="Новые теги через запятую (например: исполнительная, акт, ПД)">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{{ back_url }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

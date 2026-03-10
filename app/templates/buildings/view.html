@@ -1,0 +1,378 @@
+<!-- StroyBase: вид корпуса — наследует shared/object_view.html -->
+{% extends "shared/object_view.html" %}
+
+{% block back_button %}
+<a href="{{ url_for('project.dashboard', project_id=building.project_id) }}"
+   class="btn btn-outline-secondary"
+   aria-label="Назад к объекту">
+    <i class="bi bi-arrow-left me-2"></i>Назад к объекту
+</a>
+{% endblock %}
+
+{% block upload_button %}
+<button type="button" class="btn btn-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#uploadModalBuilding"
+        aria-label="Загрузить фото и документы">
+    <i class="bi bi-upload me-2"></i>Загрузить фото/документы
+</button>
+{% endblock %}
+{% block object_actions %}
+<a href="{{ url_for('floors.create_floor', building_id=building.id) }}" class="btn btn-outline-primary btn-sm" aria-label="Добавить этаж">
+    <i class="bi bi-plus-lg me-1"></i>Добавить этаж
+</a>
+<a href="{{ url_for('buildings.edit_building', building_id=building.id) }}" class="btn btn-warning btn-sm" aria-label="Редактировать корпус">
+    Редактировать
+</a>
+<form action="{{ url_for('buildings.delete_building', building_id=building.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Удалить корпус «{{ building.name }}»? Все этажи, фото, видео и документы будут удалены.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="btn btn-danger btn-sm" aria-label="Удалить корпус">Удалить</button>
+</form>
+{% endblock %}
+
+{% block object_header %}
+<p class="text-muted small mb-4">{{ building.building_class or '—' }} · {{ building.work_type or '—' }}</p>
+{% endblock %}
+
+{% block page_title %}Корпус «{{ building.name }}»{% endblock %}
+
+{% block object_banner %}{% endblock %}
+
+{% block tabs %}
+<li class="nav-item">
+    <a class="nav-link active" data-bs-toggle="tab" href="#schedules">Сводка по объёмам работ</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#media">Фото и видео</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#docs">Документы</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#contracts">Договора</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#tech">Тех. информация</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#plans">Планы</a>
+</li>
+{% endblock %}
+
+{% block tab_content %}
+<!-- Фото и видео -->
+<div class="tab-pane fade" id="media">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h4 class="mb-0">Фото и видео корпуса</h4>
+    </div>
+    <form method="get" action="{{ url_for('buildings.view_building', building_id=building.id) }}#media" class="row g-2 mb-4 p-3 bg-light rounded">
+        <div class="col-md-2">
+            <label class="form-label small">Выбрать этаж</label>
+            <select name="floor_id" class="form-select form-select-sm">
+                <option value="">Все этажи</option>
+                {% for floor in floors %}
+                <option value="{{ floor.id }}" {% if request.args.get('floor_id') == (floor.id|string) %}selected{% endif %}>{{ floor.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Вид документа</label>
+            <select name="doc_type_id" class="form-select form-select-sm">
+                <option value="">Все виды</option>
+                {% for dt in doc_types %}
+                <option value="{{ dt.id }}" {% if request.args.get('doc_type_id') == (dt.id|string) %}selected{% endif %}>{{ dt.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Тип медиа</label>
+            <select name="media_type" class="form-select form-select-sm">
+                <option value="all" {% if request.args.get('media_type', 'all') == 'all' %}selected{% endif %}>Все</option>
+                <option value="photo" {% if request.args.get('media_type') == 'photo' %}selected{% endif %}>Фото</option>
+                <option value="video" {% if request.args.get('media_type') == 'video' %}selected{% endif %}>Видео</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Дата от</label>
+            <input type="date" name="from_date" class="form-control form-control-sm" value="{{ request.args.get('from_date') or '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Дата до</label>
+            <input type="date" name="to_date" class="form-control form-control-sm" value="{{ request.args.get('to_date') or '' }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary btn-sm me-1">Применить фильтры</button>
+            <a href="{{ url_for('buildings.view_building', building_id=building.id) }}#media" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+        </div>
+    </form>
+    {% with docs=media_docs, floor=none, show_marker_link=true %}
+        {% include 'shared/gallery_grid.html' %}
+    {% endwith %}
+</div>
+
+<!-- Документы — общий шаблон document_tab -->
+<div class="tab-pane fade" id="docs">
+    {% set document_tab_tab_type = 'Документы' %}
+    {% set document_tab_docs = doc_docs %}
+    {% set document_tab_anchor = 'docs' %}
+    {% include 'shared/document_tab.html' with context %}
+</div>
+
+<!-- Договора — общий шаблон document_tab -->
+<div class="tab-pane fade" id="contracts">
+    {% set document_tab_tab_type = 'Договора' %}
+    {% set document_tab_docs = contract_docs %}
+    {% set document_tab_anchor = 'contracts' %}
+    {% set document_tab_contract_doc_type_id = contract_doc_type_id %}
+    {% include 'shared/document_tab.html' with context %}
+</div>
+
+<!-- Сводка по объёмам работ: только сводка (план/факт) и таблица «Работы по корпусу» -->
+<div class="tab-pane fade show active" id="schedules">
+    {% include 'buildings/building_graphs.html' %}
+</div>
+
+<!-- Тех. информация -->
+<div class="tab-pane fade" id="tech">
+    <h4 class="mb-3">Техническая информация корпуса</h4>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Базовые характеристики</h6>
+                    <p class="text-muted small mb-3">Суммарные площади по этажам корпуса.</p>
+                    <dl class="row mb-0 small">
+                        <dt class="col-7">Количество этажей</dt>
+                        <dd class="col-5 text-end">{{ floors|length }}</dd>
+                        <dt class="col-7 mt-2">Суммарная площадь этажей</dt>
+                        <dd class="col-5 text-end mt-2">
+                            {% if total_floors_area %}
+                                {{ total_floors_area|round(2) }} м²
+                            {% else %}
+                                не указана
+                            {% endif %}
+                        </dd>
+                        <dt class="col-7 mt-2">Площадь корпуса (паспортная)</dt>
+                        <dd class="col-5 text-end mt-2">
+                            {% if building.total_area_m2 is not none %}
+                                {{ building.total_area_m2|round(2) }} м²
+                            {% else %}
+                                не указана
+                            {% endif %}
+                        </dd>
+                        <dt class="col-12 mt-3 text-muted">
+                            Детализированные высоты и площади стен/потолков будут добавлены на следующих шагах.
+                        </dt>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Сводка материалов по корпусу</h6>
+                    {% if building_material_summary %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Тег / Категория</th>
+                                    <th>Материал</th>
+                                    <th>Бренд / Марка</th>
+                                    <th>Ед.</th>
+                                    <th class="text-end">План</th>
+                                    <th class="text-end">Факт</th>
+                                    <th class="text-end">Стоимость факт.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in building_material_summary %}
+                                <tr>
+                                    <td>{{ row.category or '—' }}</td>
+                                    <td>{{ row.name }}</td>
+                                    <td>{{ row.brand or '—' }}</td>
+                                    <td>{{ row.unit or '—' }}</td>
+                                    <td class="text-end">
+                                        {% if row.planned_total %}
+                                            {{ row.planned_total|round(2) }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if row.actual_total %}
+                                            {{ row.actual_total|round(2) }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if row.total_cost %}
+                                            {{ row.total_cost|round(2) }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Сводка пуста — по этажам корпуса пока не заведены материалы.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4 mt-1">
+        <div class="col-md-12">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Площади и величины по корпусу</h6>
+                    {% if building_quantities_summary %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Наименование</th>
+                                    <th class="text-end">Суммарное значение</th>
+                                    <th>Ед. изм.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in building_quantities_summary %}
+                                <tr>
+                                    <td>{{ row.name or '—' }}</td>
+                                    <td class="text-end">
+                                        {% if row.total_quantity %}
+                                            {{ row.total_quantity|round(2) }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ row.unit or '—' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Сводка пуста — по этажам корпуса пока не заведены площади и величины.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h6 class="mb-2">Переход к тех. информации по этажам</h6>
+    <div class="list-group">
+        {% for floor in floors %}
+        <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#tech" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            <span>{{ floor.name }}</span>
+            <i class="bi bi-chevron-right"></i>
+        </a>
+        {% else %}
+        <div class="alert alert-info mb-0">В корпусе пока нет этажей. Добавьте этаж, чтобы вести материалы и тех. информацию.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Планы -->
+<div class="tab-pane fade" id="plans">
+    <h4>Планы этажей</h4>
+    <p class="text-muted">Планы загружаются на странице каждого этажа.</p>
+    <div class="list-group">
+        {% for floor in floors %}
+        <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#plans" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            <span>{{ floor.name }}</span>
+            <i class="bi bi-chevron-right"></i>
+        </a>
+        {% else %}
+        <div class="alert alert-info">В корпусе пока нет этажей.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content_after_tabs %}{% endblock %}
+
+{% block modals %}
+<!-- Модальное окно загрузки документов корпуса -->
+<div class="modal fade" id="uploadModalBuilding" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('buildings.upload_building_documents', building_id=building.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузить документы / фото / видео</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Файлы <small class="text-muted">(можно выбрать несколько)</small></label>
+                        <input type="file" name="files" class="form-control" multiple required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Привязать к этажу (опционально)</label>
+                        <select name="floor_id" class="form-select">
+                            <option value="">Общие документы корпуса</option>
+                            {% for floor in floors %}
+                            <option value="{{ floor.id }}">{{ floor.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Общее название (для всех файлов)</label>
+                        <input type="text" name="title" class="form-control" placeholder="Например: Осмотр кровли">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Виды работ / категории</label>
+                        <div class="row">
+                            {% for dt in DocType.query.order_by(DocType.sort_order).all() %}
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="work_type_ids" value="{{ dt.id }}" id="wt-{{ dt.id }}">
+                                    <label class="form-check-label" for="wt-{{ dt.id }}">{{ dt.name }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" id="buildingUploadIsDocumentImage" name="is_document_image" value="1">
+                        <label class="form-check-label" for="buildingUploadIsDocumentImage">
+                            Считать загружаемые изображения сканами документов
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Загрузить файлы</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var btn = document.getElementById('btnAddContract');
+    var modal = document.getElementById('uploadModalBuilding');
+    if (btn && modal && {{ (contract_doc_type_id or 0)|int }}) {
+        var docTypeId = {{ (contract_doc_type_id or 0)|int }};
+        modal.addEventListener('show.bs.modal', function (e) {
+            if (e.relatedTarget && e.relatedTarget.id === 'btnAddContract') {
+                var cb = document.getElementById('wt-' + docTypeId);
+                if (cb) cb.checked = true;
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

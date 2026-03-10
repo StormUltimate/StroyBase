@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-truck me-2 text-primary"></i>
+                Движение материалов
+            </h2>
+            <small class="text-muted">Записи о приходе, расходе и перемещении с привязкой к объектам</small>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{{ url_for('movement.stock', project_id=current_filters.project_id or '') }}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-box-seam me-1"></i> Склад объекта
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createMovementModal">
+                <i class="bi bi-plus-circle me-1"></i> Добавить движение
+            </button>
+            {% if pagination and pagination.total is defined %}
+            <small class="text-muted">Показано: <strong>{{ movements|length }}</strong> из {{ pagination.total }}</small>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-header bg-light border-bottom py-3">
+            <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Фильтры</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold">Проект</label>
+                    <select name="project_id" class="form-select form-select-sm">
+                        <option value="">Все проекты</option>
+                        {% for p in projects_display %}
+                        <option value="{{ p[0] }}" {% if current_filters.project_id == p[0] %}selected{% endif %}>{{ p[1]|truncate(32) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold">Материал</label>
+                    <input type="text" name="material_name" class="form-control form-control-sm" placeholder="Поиск по названию" value="{{ current_filters.material_name or '' }}">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold">Дата от</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ current_filters.date_from or '' }}">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold">Дата до</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ current_filters.date_to or '' }}">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold">Тип</label>
+                    <select name="movement_type" class="form-select form-select-sm">
+                        <option value="">Все типы</option>
+                        <option value="Приход" {% if current_filters.movement_type == 'Приход' %}selected{% endif %}>Приход</option>
+                        <option value="Расход" {% if current_filters.movement_type == 'Расход' %}selected{% endif %}>Расход</option>
+                        <option value="Перемещение" {% if current_filters.movement_type == 'Перемещение' %}selected{% endif %}>Перемещение</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-funnel-fill me-1"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Таблица движений -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+            <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Записи о движении</h6>
+            {% if pagination and pagination.total is defined and pagination.total > 0 %}
+            <small class="opacity-75">Всего: {{ pagination.total }}</small>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                <table class="table table-sm table-hover table-striped mb-0 align-middle">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th>Проект</th>
+                            <th>Корпус</th>
+                            <th>Этаж</th>
+                            <th>Материал</th>
+                            <th>Бренд</th>
+                            <th class="text-end">Кол-во</th>
+                            <th>Ед.</th>
+                            <th>Тип</th>
+                            <th>Дата</th>
+                            <th class="text-center">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in movements %}
+                        <tr>
+                            <td class="small fw-medium">{{ m.project.name|truncate(28) if m.project else '—' }}</td>
+                            <td class="small">{{ m.building.name|truncate(20) if m.building else '—' }}</td>
+                            <td class="small">{{ m.floor.name|truncate(16) if m.floor else '—' }}</td>
+                            <td>
+                                <span class="fw-medium">{{ m.material_name or '—' }}</span>
+                                {% if m.note %}<br><small class="text-muted">{{ m.note|truncate(40) }}</small>{% endif %}
+                            </td>
+                            <td class="small">{{ m.brand|truncate(20) if m.brand else '—' }}</td>
+                            <td class="text-end small">{{ m.quantity|float|round(2) if m.quantity is not none else '—' }}</td>
+                            <td class="small">{{ m.unit or '—' }}</td>
+                            <td>
+                                {% if m.movement_type == 'Приход' %}<span class="badge bg-success">Приход</span>
+                                {% elif m.movement_type == 'Расход' %}<span class="badge bg-warning text-dark">Расход</span>
+                                {% elif m.movement_type == 'Перемещение' %}<span class="badge bg-info">Перемещение</span>
+                                {% else %}<span class="badge bg-secondary">{{ m.movement_type or '—' }}</span>{% endif %}
+                            </td>
+                            <td class="small">{{ m.movement_date.strftime('%d.%m.%Y') if m.movement_date else '—' }}</td>
+                            <td class="text-center">
+                                <a href="{{ url_for('movement.edit_movement', movement_id=m.id) }}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted bg-light">
+                                <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                                <div class="mb-2">Записей по выбранным фильтрам нет</div>
+                                <small>Добавьте запись о движении или измените фильтры</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination and pagination.pages > 1 %}
+        <div class="card-footer bg-light border-top-0">
+            <nav aria-label="Пагинация">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('movement.index', page=pagination.prev_num, project_id=current_filters.project_id or '', building_id=current_filters.building_id or '', material_name=current_filters.material_name or '', date_from=current_filters.date_from or '', date_to=current_filters.date_to or '', movement_type=current_filters.movement_type or '') }}">← Пред.</a>
+                    </li>
+                    {% endif %}
+                    {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num == pagination.page %}
+                            <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                            {% else %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('movement.index', page=page_num, project_id=current_filters.project_id or '', building_id=current_filters.building_id or '', material_name=current_filters.material_name or '', date_from=current_filters.date_from or '', date_to=current_filters.date_to or '', movement_type=current_filters.movement_type or '') }}">{{ page_num }}</a></li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('movement.index', page=pagination.next_num, project_id=current_filters.project_id or '', building_id=current_filters.building_id or '', material_name=current_filters.material_name or '', date_from=current_filters.date_from or '', date_to=current_filters.date_to or '', movement_type=current_filters.movement_type or '') }}">След. →</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно: создание записи о движении -->
+<div class="modal fade" id="createMovementModal" tabindex="-1" aria-labelledby="createMovementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="createMovementModalLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Новая запись о движении материала
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <form method="post" action="{{ url_for('movement.create_movement') }}" id="createMovementForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <!-- Привязка к объекту: проект → корпус → этаж (каскад) -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <label class="form-label fw-semibold text-secondary mb-3">Привязка к объекту</label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label small">Проект <span class="text-danger">*</span></label>
+                                {% if preset_project_id %}
+                                <input type="hidden" name="project_id" value="{{ preset_project_id }}" id="modal_project_id_hidden">
+                                <select class="form-select" id="modal_project_id" disabled aria-label="Проект">
+                                    {% for p in projects_display %}
+                                    {% if p[0] == preset_project_id %}<option value="{{ p[0] }}" selected>{{ p[1] }}</option>{% endif %}
+                                    {% endfor %}
+                                </select>
+                                {% else %}
+                                <select name="project_id" id="modal_project_id" class="form-select" required aria-label="Проект">
+                                    <option value="">Выберите проект</option>
+                                    {% for p in projects_display %}
+                                    <option value="{{ p[0] }}" {% if p[0] == current_filters.project_id %}selected{% endif %}>{{ p[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Корпус</label>
+                                <div class="position-relative">
+                                    <select name="building_id" id="modal_building_id" class="form-select" aria-label="Корпус" disabled>
+                                        <option value="">Не привязан</option>
+                                    </select>
+                                    <span id="modal_building_spinner" class="position-absolute top-50 end-0 translate-middle-y me-2 d-none" aria-hidden="true">
+                                        <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+                                    </span>
+                                </div>
+                                <small id="modal_building_hint" class="text-muted d-none" role="status">У проекта нет корпусов</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Этаж</label>
+                                <div class="position-relative">
+                                    <select name="floor_id" id="modal_floor_id" class="form-select" aria-label="Этаж" disabled>
+                                        <option value="">Не привязан</option>
+                                    </select>
+                                    <span id="modal_floor_spinner" class="position-absolute top-50 end-0 translate-middle-y me-2 d-none" aria-hidden="true">
+                                        <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Материал -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Наименование материала</label>
+                            <input type="text" name="material_name" class="form-control" placeholder="Например: Кирпич керамический">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Бренд / производитель</label>
+                            <input type="text" name="brand" class="form-control" placeholder="Необязательно">
+                        </div>
+                    </div>
+                    <!-- Количество и размеры -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small">Количество</label>
+                            <input type="number" name="quantity" step="0.01" min="0" class="form-control" placeholder="0">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small">Ед. изм.</label>
+                            <select name="unit" class="form-select">
+                                <option value="">не выбрано</option>
+                                <option value="м">м</option>
+                                <option value="м²">м²</option>
+                                <option value="м³">м³</option>
+                                <option value="шт">шт</option>
+                                <option value="л">л</option>
+                                <option value="кг">кг</option>
+                                <option value="т">т</option>
+                                <option value="пог.м">пог.м</option>
+                                <option value="упак">упак</option>
+                                <option value="комплект">комплект</option>
+                            </select>
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <label class="form-label small">Объём, м³</label>
+                            <input type="number" name="volume_m3" step="0.0001" min="0" class="form-control" placeholder="">
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <label class="form-label small">Длина, м</label>
+                            <input type="number" name="length_m" step="0.01" min="0" class="form-control" placeholder="">
+                        </div>
+                        <div class="col-4 col-md-2">
+                            <label class="form-label small">Вес, кг</label>
+                            <input type="number" name="weight_kg" step="0.01" min="0" class="form-control" placeholder="">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small">Тип движения</label>
+                            <select name="movement_type" class="form-select">
+                                <option value="">не выбрано</option>
+                                <option value="Приход">Приход</option>
+                                <option value="Расход">Расход</option>
+                                <option value="Перемещение">Перемещение</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label small">Дата движения</label>
+                            <input type="date" name="movement_date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Примечание</label>
+                        <textarea name="note" class="form-control form-control-sm" rows="2" placeholder="Комментарий (необязательно)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var presetProjectId = {{ preset_project_id|default('null') }};
+    var presetBuildingId = {{ preset_building_id|default('null') }};
+    var presetFloorId = {{ preset_floor_id|default('null') }};
+    var projectSelect = document.getElementById('modal_project_id');
+    var buildingSelect = document.getElementById('modal_building_id');
+    var floorSelect = document.getElementById('modal_floor_id');
+    var buildingSpinner = document.getElementById('modal_building_spinner');
+    var floorSpinner = document.getElementById('modal_floor_spinner');
+    var apiBuildings = '{{ url_for("movement.api_buildings") }}';
+    var apiFloors = '{{ url_for("movement.api_floors") }}';
+
+    function getSelectedProjectId() {
+        if (presetProjectId) return String(presetProjectId);
+        return projectSelect ? (projectSelect.value || '') : '';
+    }
+
+    function setBuildingEnabled(enabled) {
+        if (buildingSelect) buildingSelect.disabled = !enabled;
+    }
+
+    function setFloorEnabled(enabled) {
+        if (floorSelect) floorSelect.disabled = !enabled;
+    }
+
+    function clearBuildingOptions() {
+        if (!buildingSelect) return;
+        while (buildingSelect.options.length > 1) buildingSelect.remove(1);
+        buildingSelect.value = '';
+    }
+
+    function clearFloorOptions() {
+        if (!floorSelect) return;
+        while (floorSelect.options.length > 1) floorSelect.remove(1);
+        floorSelect.value = '';
+    }
+
+    function safeText(val) {
+        if (val == null) return '';
+        var s = String(val).trim();
+        return s.length > 0 ? s : '';
+    }
+
+    function loadBuildings(projectId, thenSelectBuildingId) {
+        clearBuildingOptions();
+        clearFloorOptions();
+        setFloorEnabled(false);
+        var hint = document.getElementById('modal_building_hint');
+        if (hint) hint.classList.add('d-none');
+        if (!projectId) {
+            setBuildingEnabled(false);
+            return Promise.resolve();
+        }
+        setBuildingEnabled(true);
+        if (buildingSpinner) buildingSpinner.classList.remove('d-none');
+        return fetch(apiBuildings + '?project_id=' + encodeURIComponent(projectId))
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(j) { throw new Error(j && j.error || r.status); });
+                return r.json();
+            })
+            .then(function(arr) {
+                var list = Array.isArray(arr) ? arr : [];
+                var seenIds = new Set();
+                list.forEach(function(b) {
+                    var id = b && (b.id != null) ? b.id : null;
+                    if (id === null || seenIds.has(id)) return;
+                    seenIds.add(id);
+                    var opt = document.createElement('option');
+                    opt.value = String(id);
+                    opt.textContent = safeText(b.name) || ('Корпус ' + id);
+                    buildingSelect.appendChild(opt);
+                });
+                var hint = document.getElementById('modal_building_hint');
+                if (hint) hint.classList.toggle('d-none', list.length > 0);
+                if (thenSelectBuildingId && buildingSelect.querySelector('option[value="' + String(thenSelectBuildingId) + '"]')) {
+                    buildingSelect.value = String(thenSelectBuildingId);
+                    loadFloors(thenSelectBuildingId, presetFloorId);
+                }
+            })
+            .catch(function() {})
+            .finally(function() {
+                if (buildingSpinner) buildingSpinner.classList.add('d-none');
+            });
+    }
+
+    function loadFloors(buildingId, thenSelectFloorId) {
+        clearFloorOptions();
+        if (!buildingId) {
+            setFloorEnabled(false);
+            return Promise.resolve();
+        }
+        setFloorEnabled(true);
+        if (floorSpinner) floorSpinner.classList.remove('d-none');
+        return fetch(apiFloors + '?building_id=' + encodeURIComponent(buildingId))
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(j) { throw new Error(j && j.error || r.status); });
+                return r.json();
+            })
+            .then(function(arr) {
+                var list = Array.isArray(arr) ? arr : [];
+                var seenIds = new Set();
+                list.forEach(function(f) {
+                    var id = f && (f.id != null) ? f.id : null;
+                    if (id === null || seenIds.has(id)) return;
+                    seenIds.add(id);
+                    var opt = document.createElement('option');
+                    opt.value = String(id);
+                    opt.textContent = safeText(f.name) || ('Этаж ' + id);
+                    floorSelect.appendChild(opt);
+                });
+                if (thenSelectFloorId && floorSelect.querySelector('option[value="' + String(thenSelectFloorId) + '"]'))
+                    floorSelect.value = String(thenSelectFloorId);
+            })
+            .catch(function() {})
+            .finally(function() {
+                if (floorSpinner) floorSpinner.classList.add('d-none');
+            });
+    }
+
+    function onProjectChange() {
+        var projectId = getSelectedProjectId();
+        loadBuildings(projectId, null);
+    }
+
+    function onBuildingChange() {
+        var buildingId = buildingSelect ? (buildingSelect.value || '') : '';
+        loadFloors(buildingId, null);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!buildingSelect || !floorSelect) return;
+        setBuildingEnabled(!!getSelectedProjectId());
+        setFloorEnabled(!!(buildingSelect.value && buildingSelect.value !== ''));
+        if (projectSelect && !projectSelect.disabled) {
+            projectSelect.addEventListener('change', onProjectChange);
+        }
+        buildingSelect.addEventListener('change', onBuildingChange);
+    });
+
+    document.getElementById('createMovementModal')?.addEventListener('show.bs.modal', function() {
+        var projectId = getSelectedProjectId();
+        if (!projectId) {
+            clearBuildingOptions();
+            clearFloorOptions();
+            setBuildingEnabled(false);
+            setFloorEnabled(false);
+            return;
+        }
+        setBuildingEnabled(true);
+        if (presetBuildingId || presetFloorId)
+            loadBuildings(projectId, presetBuildingId || null);
+        else
+            loadBuildings(projectId, null);
+    });
+})();
+</script>
+{% endblock %}

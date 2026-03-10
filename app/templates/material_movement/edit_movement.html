@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-pencil-square me-2 text-primary"></i>
+            Редактирование записи о движении
+        </h2>
+        <a href="{{ url_for('movement.index', project_id=movement.project_id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> К списку
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Привязка к объекту и данные движения</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {{ form.hidden_tag() }}
+
+                        <div class="row g-3 mb-4 pb-3 border-bottom">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold"><i class="bi bi-building me-1 text-primary"></i>Привязка к объекту</label>
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.project_id.label(class="form-label") }}
+                                {{ form.project_id(class="form-select form-select-lg", id="edit_project_id") }}
+                                {% for error in form.project_id.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.building_id.label(class="form-label") }}
+                                <div class="position-relative">
+                                    {{ form.building_id(class="form-select form-select-lg", id="edit_building_id") }}
+                                    <span id="edit_building_spinner" class="position-absolute top-50 end-0 translate-middle-y me-2 d-none">
+                                        <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.floor_id.label(class="form-label") }}
+                                <div class="position-relative">
+                                    {{ form.floor_id(class="form-select form-select-lg", id="edit_floor_id") }}
+                                    <span id="edit_floor_spinner" class="position-absolute top-50 end-0 translate-middle-y me-2 d-none">
+                                        <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ form.material_name.label(class="form-label fw-semibold") }}
+                                {{ form.material_name(class="form-control form-control-lg", placeholder="Наименование материала") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.brand.label(class="form-label") }}
+                                {{ form.brand(class="form-control form-control-lg", placeholder="Бренд / производитель") }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.quantity.label(class="form-label") }}
+                                {{ form.quantity(class="form-control form-control-lg", type="number", step="0.01", min="0") }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.unit.label(class="form-label") }}
+                                {{ form.unit(class="form-select form-control-lg") }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.volume_m3.label(class="form-label") }}
+                                {{ form.volume_m3(class="form-control form-control-lg", type="number", step="0.0001", min="0") }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.length_m.label(class="form-label") }}
+                                {{ form.length_m(class="form-control form-control-lg", type="number", step="0.01", min="0") }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.weight_kg.label(class="form-label") }}
+                                {{ form.weight_kg(class="form-control form-control-lg", type="number", step="0.01", min="0") }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.movement_type.label(class="form-label") }}
+                                {{ form.movement_type(class="form-select form-control-lg") }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.movement_date.label(class="form-label") }}
+                                {{ form.movement_date(class="form-control form-control-lg", type="date") }}
+                            </div>
+                            <div class="col-12">
+                                {{ form.note.label(class="form-label") }}
+                                {{ form.note(class="form-control", rows=3, placeholder="Примечание") }}
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg px-4">
+                                    <i class="bi bi-save me-1"></i> Сохранить
+                                </button>
+                                <a href="{{ url_for('movement.index', project_id=movement.project_id) }}" class="btn btn-outline-secondary btn-lg ms-2">Отмена</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Документы: накладная, УПД, сертификаты -->
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-header bg-secondary text-white py-3">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-pdf me-2"></i>Документы (накладная, УПД, сертификаты)</h6>
+                </div>
+                <div class="card-body">
+                    {% if document_links %}
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Тип</th>
+                                    <th>Название / файл</th>
+                                    <th class="text-end">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for link in document_links %}
+                                <tr>
+                                    <td>
+                                        {% if link.doc_type == 'invoice' %}Накладная
+                                        {% elif link.doc_type == 'upd' %}УПД
+                                        {% elif link.doc_type == 'certificate' %}Сертификат
+                                        {% else %}Другое{% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('movement.serve_movement_document', movement_id=movement.id, document_id=link.document_id) }}" target="_blank" rel="noopener">
+                                            {{ link.document.title or link.document.filename or 'Документ' }}
+                                        </a>
+                                    </td>
+                                    <td class="text-end">
+                                        <form method="post" action="{{ url_for('movement.detach_movement_document', movement_id=movement.id, document_id=link.document_id) }}" class="d-inline" onsubmit="return confirm('Отвязать документ от записи?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Отвязать</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-4">Документы не привязаны. Загрузите накладную, УПД или сертификат ниже.</p>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('movement.attach_movement_document', movement_id=movement.id) }}" enctype="multipart/form-data" class="row g-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="col-md-3">
+                            <label class="form-label">Тип документа</label>
+                            <select name="doc_type" class="form-select" required>
+                                <option value="invoice">Накладная</option>
+                                <option value="upd">УПД</option>
+                                <option value="certificate">Сертификат</option>
+                                <option value="other">Другое</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Название (необяз.)</label>
+                            <input type="text" name="title" class="form-control" placeholder="Краткое название">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Файл</label>
+                            <input type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" required>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload me-1"></i>Прикрепить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var apiBuildings = '{{ api_buildings_url }}';
+    var apiFloors = '{{ api_floors_url }}';
+    var projectSelect = document.getElementById('edit_project_id');
+    var buildingSelect = document.getElementById('edit_building_id');
+    var floorSelect = document.getElementById('edit_floor_id');
+    var buildingSpinner = document.getElementById('edit_building_spinner');
+    var floorSpinner = document.getElementById('edit_floor_spinner');
+
+    function setOptions(select, options) {
+        if (!select) return;
+        select.innerHTML = '';
+        (options || []).forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o.value;
+            opt.textContent = o.text;
+            select.appendChild(opt);
+        });
+    }
+
+    var emptyOption = { value: '', text: '— Не привязан —' };
+
+    function loadBuildingsEdit(projectId, selectBuildingId) {
+        if (!projectId) {
+            setOptions(buildingSelect, [emptyOption]);
+            setOptions(floorSelect, [emptyOption]);
+            return Promise.resolve();
+        }
+        if (buildingSpinner) buildingSpinner.classList.remove('d-none');
+        return fetch(apiBuildings + '?project_id=' + encodeURIComponent(projectId))
+            .then(function(r) { return r.ok ? r.json() : []; })
+            .then(function(arr) {
+                var list = Array.isArray(arr) ? arr : [];
+                var opts = [emptyOption].concat(list.map(function(b) {
+                    return { value: String(b.id), text: (b.name || 'Корпус ' + b.id).trim() };
+                }));
+                setOptions(buildingSelect, opts);
+                if (selectBuildingId && list.some(function(b) { return b.id == selectBuildingId; }))
+                    buildingSelect.value = String(selectBuildingId);
+                else
+                    buildingSelect.value = '';
+                loadFloorsEdit(buildingSelect.value);
+            })
+            .catch(function() { setOptions(buildingSelect, [emptyOption]); setOptions(floorSelect, [emptyOption]); })
+            .finally(function() { if (buildingSpinner) buildingSpinner.classList.add('d-none'); });
+    }
+
+    function loadFloorsEdit(buildingId) {
+        if (!buildingId) {
+            setOptions(floorSelect, [emptyOption]);
+            return Promise.resolve();
+        }
+        if (floorSpinner) floorSpinner.classList.remove('d-none');
+        return fetch(apiFloors + '?building_id=' + encodeURIComponent(buildingId))
+            .then(function(r) { return r.ok ? r.json() : []; })
+            .then(function(arr) {
+                var list = Array.isArray(arr) ? arr : [];
+                var opts = [emptyOption].concat(list.map(function(f) {
+                    return { value: String(f.id), text: (f.name || 'Этаж ' + f.id).trim() };
+                }));
+                setOptions(floorSelect, opts);
+            })
+            .catch(function() { setOptions(floorSelect, [emptyOption]); })
+            .finally(function() { if (floorSpinner) floorSpinner.classList.add('d-none'); });
+    }
+
+    if (projectSelect) projectSelect.addEventListener('change', function() {
+        loadBuildingsEdit(projectSelect.value, null);
+    });
+    if (buildingSelect) buildingSelect.addEventListener('change', function() {
+        loadFloorsEdit(buildingSelect.value);
+    });
+})();
+</script>
+{% endblock %}

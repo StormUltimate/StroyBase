@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Добавить корпус в объект "{{ project.name }}"</h2>
+    <a href="{{ url_for('project.dashboard', project_id=project.id) }}" class="btn btn-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Назад к объекту
+    </a>
+
+    <div class="card p-4" style="max-width: 600px;">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="mb-3">
+                <label class="form-label">Название корпуса <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" required placeholder="например, Корпус 1, Подъезд 2">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Класс строения</label>
+                <select name="building_class" class="form-select">
+                    <option value="Жилая единица">Жилая единица</option>
+                    <option value="Административное">Административное</option>
+                    <option value="Общественное">Общественное</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Вид работ</label>
+                <select name="work_type" class="form-select">
+                    <option value="Капитальный ремонт">Капитальный ремонт</option>
+                    <option value="Текущий ремонт">Текущий ремонт</option>
+                    <option value="Новое строительство">Новое строительство</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Примечание</label>
+                <textarea name="note" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Цвет метки</label>
+                <select name="color" class="form-select">
+                    <option value="primary">Синий</option>
+                    <option value="success">Зелёный</option>
+                    <option value="warning">Жёлтый</option>
+                    <option value="danger">Красный</option>
+                    <option value="info">Голубой</option>
+                    <option value="secondary">Серый</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Создать корпус</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

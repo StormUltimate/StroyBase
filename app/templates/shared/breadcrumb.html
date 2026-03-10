@@ -1,0 +1,110 @@
+{# StroyBase: хлебные крошки в стиле проводника Windows #}
+{# Формат: Все объекты > Проект «Название» > Корпус «Название» > Этаж «Название»; по клику — выпадающий список соседей #}
+<div class="stroybase-breadcrumb bg-white border-bottom shadow-sm sticky-top">
+    <div class="container-fluid py-2">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small align-items-center flex-nowrap">
+                {# Все объекты #}
+                <li class="breadcrumb-item d-flex align-items-center">
+                    {% if g_project %}
+                    <div class="dropdown">
+                        <a class="breadcrumb-link dropdown-toggle text-decoration-none text-dark" href="#" data-bs-toggle="dropdown" aria-expanded="false" id="breadcrumb-projects">
+                            <i class="bi bi-house-door-fill text-primary me-1"></i>Все объекты
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="breadcrumb-projects">
+                            <li><a class="dropdown-item" href="{{ url_for('main.index') }}"><i class="bi bi-house-door me-1"></i>Все объекты</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% for p in g_projects or [] %}
+                            <li>
+                                <a class="dropdown-item {% if g_project and p.id == g_project.id %}active fw-bold{% endif %}" href="{{ url_for('project.dashboard', project_id=p.id) }}">{{ p.name|truncate(40) }}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <span class="text-dark fw-bold"><i class="bi bi-house-door-fill text-primary me-1"></i>Все объекты</span>
+                    {% endif %}
+                </li>
+
+                {% if g_project %}
+                <li class="breadcrumb-item px-1 text-muted" aria-hidden="true"><i class="bi bi-chevron-right small"></i></li>
+                <li class="breadcrumb-item d-flex align-items-center">
+                    {% if g_building or g_floor %}
+                    <div class="dropdown">
+                        <a class="breadcrumb-link dropdown-toggle text-decoration-none text-dark" href="#" data-bs-toggle="dropdown" aria-expanded="false" id="breadcrumb-project">
+                            Проект «{{ g_project.name|truncate(30) }}»
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="breadcrumb-project">
+                            {% for p in g_projects or [] %}
+                            <li>
+                                <a class="dropdown-item {% if p.id == g_project.id %}active fw-bold{% endif %}" href="{{ url_for('project.dashboard', project_id=p.id) }}">{{ p.name|truncate(40) }}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <span class="text-dark fw-bold" aria-current="page">Проект «{{ g_project.name|truncate(30) }}»</span>
+                    {% endif %}
+                </li>
+                {% endif %}
+
+                {% if g_building %}
+                <li class="breadcrumb-item px-1 text-muted" aria-hidden="true"><i class="bi bi-chevron-right small"></i></li>
+                <li class="breadcrumb-item d-flex align-items-center">
+                    {% if g_floor %}
+                    <div class="dropdown">
+                        <a class="breadcrumb-link dropdown-toggle text-decoration-none text-dark" href="#" data-bs-toggle="dropdown" aria-expanded="false" id="breadcrumb-buildings">
+                            Корпус «{{ g_building.name|truncate(25) }}»
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="breadcrumb-buildings">
+                            {% for b in g_buildings or [] %}
+                            <li>
+                                <a class="dropdown-item {% if b.id == g_building.id %}active fw-bold{% endif %}" href="{{ url_for('buildings.view_building', building_id=b.id) }}">{{ b.name|truncate(40) }}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <span class="text-dark fw-bold" aria-current="page">Корпус «{{ g_building.name|truncate(25) }}»</span>
+                    {% endif %}
+                </li>
+                {% endif %}
+
+                {% if g_floor %}
+                <li class="breadcrumb-item px-1 text-muted" aria-hidden="true"><i class="bi bi-chevron-right small"></i></li>
+                <li class="breadcrumb-item d-flex align-items-center">
+                    <div class="dropdown">
+                        <a class="breadcrumb-link dropdown-toggle text-decoration-none text-dark fw-bold" href="#" data-bs-toggle="dropdown" aria-expanded="false" id="breadcrumb-floors" aria-current="page">
+                            Этаж «{{ g_floor.name }}»{% if g_floor.floor_type %} ({{ g_floor.floor_type }}){% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="breadcrumb-floors">
+                            {% for f in g_floors or [] %}
+                            <li>
+                                <a class="dropdown-item {% if f.id == g_floor.id %}active fw-bold{% endif %}" href="{{ url_for('floors.view_floor', floor_id=f.id) }}">{{ f.name }}{% if f.floor_type %} ({{ f.floor_type }}){% endif %}</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+            </ol>
+        </nav>
+    </div>
+</div>
+<style>
+.stroybase-breadcrumb .breadcrumb-item + .breadcrumb-item::before { content: none; }
+.stroybase-breadcrumb .breadcrumb-link:hover { color: var(--bs-primary) !important; }
+.stroybase-breadcrumb .dropdown-toggle::after { margin-left: 0.25rem; }
+.stroybase-breadcrumb .breadcrumb-item span.fw-bold { color: var(--bs-primary); }
+@media (max-width: 768px) {
+    .stroybase-breadcrumb .breadcrumb { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .stroybase-breadcrumb .breadcrumb-item { display: inline-flex; }
+}
+</style>
+<script>
+(function() {
+    document.querySelectorAll('.stroybase-breadcrumb .dropdown-toggle').forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) { e.preventDefault(); });
+    });
+})();
+</script>

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>{{ title }}</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        {% for field in form if field.type != 'HiddenField' %}
+            <div class="mb-3">
+                {{ field.label(class="form-label") }}
+                {{ field(class="form-control" + (" is-invalid" if field.errors else "")) }}
+                {% if field.errors %}<div class="invalid-feedback">{{ field.errors[0] }}</div>{% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{{ url_for('admin.user_list') }}" class="btn btn-secondary">Отмена</a>
+    </form>
+</div>
+{% endblock %}

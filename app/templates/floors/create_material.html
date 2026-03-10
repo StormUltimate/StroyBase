@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>{{ title }}</h2>
+    <p class="text-muted">Этаж: {{ floor.name }}</p>
+    <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#tech" class="btn btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Назад к этажу
+    </a>
+
+    <div class="card p-4" style="max-width: 700px;">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.name.label }} {{ form.name(class="form-control") }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.brand.label }} {{ form.brand(class="form-control") }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.gost.label }} {{ form.gost(class="form-control") }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.unit.label }} {{ form.unit(class="form-select") }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form.planned_quantity.label }} {{ form.planned_quantity(class="form-control") }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.actual_quantity.label }} {{ form.actual_quantity(class="form-control") }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.price_per_unit.label }} {{ form.price_per_unit(class="form-control") }}
+                </div>
+            </div>
+            <div class="mb-3">
+                {{ form.color.label }} {{ form.color(class="form-control") }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Сертификат / паспорт качества</label>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    {{ form.certificate_document_id(class="form-select", style="max-width: 320px;", id="certificate_document_id") }}
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadCertModal">
+                        <i class="bi bi-upload"></i> Загрузить сертификат
+                    </button>
+                </div>
+                <small class="text-muted">Выберите документ этажа или загрузите новый — он сразу привяжется к материалу.</small>
+            </div>
+            <div class="mb-3">
+                {{ form.note.label }} {{ form.note(class="form-control", rows=2) }}
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить материал</button>
+            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#tech" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="uploadCertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Загрузить сертификат / паспорт качества</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadCertForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label">Файл</label>
+                        <input type="file" name="file" class="form-control" required accept=".pdf,image/*"/>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название (необязательно)</label>
+                        <input type="text" name="title" class="form-control" placeholder="Сертификат, паспорт…"/>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="uploadCertSubmit">Загрузить</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('uploadCertForm');
+    var select = document.getElementById('certificate_document_id');
+    var submitBtn = document.getElementById('uploadCertSubmit');
+    var modal = document.getElementById('uploadCertModal');
+    if (!form || !select || !submitBtn) return;
+    submitBtn.addEventListener('click', function () {
+        var fileInput = form.querySelector('input[name="file"]');
+        if (!fileInput || !fileInput.files.length) { alert('Выберите файл'); return; }
+        var fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+        fd.append('title', (form.querySelector('input[name="title"]') || {}).value || '');
+        fd.append('csrf_token', (form.querySelector('input[name="csrf_token"]') || {}).value || '');
+        submitBtn.disabled = true;
+        fetch("{{ url_for('floors.upload_floor_document_ajax', floor_id=floor.id) }}", { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                submitBtn.disabled = false;
+                if (data.error) { alert(data.error); return; }
+                var opt = document.createElement('option');
+                opt.value = data.id;
+                opt.textContent = data.title;
+                opt.selected = true;
+                select.appendChild(opt);
+                bootstrap.Modal.getInstance(modal).hide();
+                form.reset();
+            })
+            .catch(function () { submitBtn.disabled = false; alert('Ошибка загрузки'); });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,560 @@
+{# Вкладка «Сводка по объёмам работ» корпуса: сводка (план/факт) и таблица «Работы по корпусу» #}
+{# Контекст: project, building, works_by_building, works_summary_project, works_summary_buildings, graphs_works_from_str, graphs_works_to_str #}
+<nav class="mb-3 small" aria-label="Навигация по разделу">
+    <a href="#works-summary" class="me-3">Сводка по объёмам</a>
+    <a href="#works-by-building" class="me-3">Работы по корпусу</a>
+</nav>
+
+<div id="works-summary" class="mt-4" data-works-summary-url="{{ url_for('project.works_summary_json', project_id=project.id, graphs_building_id=building.id, graphs_works_from=graphs_works_from_str or '', graphs_works_to=graphs_works_to_str or '') }}">
+    <h5 class="mb-3">Сводка по объёмам работ (план / факт)</h5>
+    <p class="text-muted small mb-2">Общий % по корпусу — среднее арифметическое процентов по всем работам: каждая работа даёт свой %, все участвуют в расчёте. Отклонение = факт − план.</p>
+    <div class="row g-2 mb-3">
+        {% for s in works_summary_buildings or [] %}
+        <div class="col-md-4 works-summary-building-card" data-building-id="{{ s.building.id }}">
+            <div class="card h-100">
+                <div class="card-body py-2">
+                    <h6 class="card-subtitle text-muted mb-1">{{ s.building.name }}</h6>
+                    <div class="progress" style="height: 1.5rem;">
+                        <div class="progress-bar {% if (s.percent or 0) >= 100 %}bg-success{% elif (s.percent or 0) >= 50 %}bg-info{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ [s.percent or 0, 100]|min }}%;" aria-valuenow="{{ s.percent or 0 }}" aria-valuemin="0" aria-valuemax="100">{% if s.percent is not none %}{{ "%.1f"|format(s.percent) }}%{% else %}N/A{% endif %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="table-responsive">
+        <table id="works-summary-table" class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Уровень</th>
+                    <th>Плановый объём</th>
+                    <th>Выполнено</th>
+                    <th>% выполнения</th>
+                    <th>Отклонение</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in works_summary_buildings or [] %}
+                <tr class="works-summary-building-row" data-building-id="{{ s.building.id }}">
+                    <td>{{ s.building.name }}</td>
+                    <td>{{ "%.2f"|format(s.total_volume or 0) }}</td>
+                    <td>{{ "%.2f"|format(s.total_executed or 0) }}</td>
+                    <td>{% if s.percent is not none %}{{ "%.1f"|format(s.percent) }}%{% else %}N/A{% endif %}</td>
+                    <td>{{ "%.2f"|format((s.total_executed or 0) - (s.total_volume or 0)) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="works-by-building" class="mt-4">
+    <h5 class="mb-3">Работы по корпусу</h5>
+    {% for group in works_by_building or [] %}
+    <div class="card mb-3 works-by-building-card" data-building-id="{{ group.building.id }}">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>
+                <strong>{{ group.building.name }}</strong>
+                {% for s in works_summary_buildings or [] %}
+                {% if s.building.id == group.building.id %}
+                <span class="badge bg-secondary ms-2 works-summary-badge">{% if s.percent is not none %}{{ "%.1f"|format(s.percent) }}%{% else %}N/A{% endif %}</span>
+                {% endif %}
+                {% endfor %}
+            </span>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addWorkModal" data-building-id="{{ group.building.id }}" data-building-name="{{ group.building.name|e }}">Добавить работу</button>
+        </div>
+        <div class="card-body p-0">
+            {% set entries_dem = group.entries|selectattr('work.category', 'equalto', 'Демонтажные работы')|list %}
+            {% set entries_gen = group.entries|selectattr('work.category', 'equalto', 'Общестроительные работы')|list %}
+            {% set entries_eng = group.entries|selectattr('work.category', 'equalto', 'Инженерные системы')|list %}
+            {% set entries_none = group.entries|rejectattr('work.category')|list %}
+
+            {% for section_name, section_class, section_entries in [
+                ('Демонтажные работы', 'border-danger', entries_dem),
+                ('Общестроительные работы', 'border-primary', entries_gen + entries_none),
+                ('Инженерные системы', 'border-success', entries_eng),
+            ] %}
+            <div class="border-top {{ section_class }}">
+                <div class="bg-light px-3 py-1 small fw-semibold" aria-label="{{ section_name }}">
+                    {{ section_name }}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Наименование</th>
+                                <th>Объём</th>
+                                <th>Ед.</th>
+                                <th>%</th>
+                                <th>План. дата завершения</th>
+                                <th>Выполнено</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {# Для инженерных систем группируем по подразделам (system_subsection), для остальных — плоский список #}
+                        {% if section_name == 'Инженерные системы' %}
+                            {# Группируем инженерные системы по подразделам (Work.system_subsection_or_default) #}
+                            {% for subgroup in section_entries|groupby('work.system_subsection_or_default') %}
+                                {% set subsection_name = subgroup.grouper or 'Прочие системы' %}
+                                {% set sub_entries = subgroup.list %}
+                                {# Подсчёт итога по подразделу: объём, выполнено и % = выполнено/объём * 100 #}
+                                {% set total_vol = 0 %}
+                                {% set total_exec = 0 %}
+                                {% for e in sub_entries %}
+                                    {% set total_vol = total_vol + (e.volume or 0) %}
+                                    {% set total_exec = total_exec + (e.executed or 0) %}
+                                {% endfor %}
+                                {% set pct_sub = (total_exec / total_vol * 100) if total_vol > 0 else None %}
+                                <tr class="table-secondary">
+                                    <td colspan="7">
+                                        <strong>{{ subsection_name }}</strong>
+                                        {% if pct_sub is not none %}
+                                            <span class="ms-2 text-muted small">({{ '%.1f'|format(pct_sub) }}%)</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% for e in sub_entries %}
+                                    <tr class="work-row" data-work-id="{{ e.work.id }}" data-building-id="{{ group.building.id }}">
+                                        <td>{{ e.work.name or '—' }}</td>
+                                        <td>{{ "%.2f"|format(e.volume or 0) }}</td>
+                                        <td>{{ e.work.unit or '—' }}</td>
+                                        <td class="work-pct-cell">{% if e.percent is not none %}{{ "%.1f"|format(e.percent) }}%{% else %}N/A{% endif %}</td>
+                                        <td>{{ e.work.planned_completion_date.strftime('%d.%m.%Y') if e.work.planned_completion_date else '—' }}</td>
+                                        <td class="work-executed-cell">{{ "%.2f"|format(e.executed or 0) }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm work-daily-btn" data-work-id="{{ e.work.id }}" data-work-name="{{ (e.work.name or '')|e }}" title="Ежедневное выполнение">Ежедн.</button>
+                                                <button type="button" class="btn btn-outline-warning btn-sm work-edit-btn" data-work-id="{{ e.work.id }}" data-work-name="{{ (e.work.name or '')|e }}" data-volume="{{ e.volume or '' }}" data-unit="{{ (e.work.unit or '')|e }}" data-planned="{{ e.work.planned_completion_date.isoformat() if e.work.planned_completion_date else '' }}" data-initial-executed="{{ e.work.initial_executed if e.work.initial_executed is not none else '' }}" data-category="{{ e.work.category or '' }}" title="Редактировать">Ред.</button>
+                                                <form action="{{ url_for('project.delete_work', project_id=project.id, work_id=e.work.id) }}" method="post" class="d-inline" onsubmit="return confirm('Удалить работу «{{ (e.work.name or '')|e }}» и все записи выполнения?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <input type="hidden" name="next" value="{{ url_for('buildings.view_building', building_id=building.id) }}#schedules"/>
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Удалить">Уд.</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr><td colspan="7" class="text-center text-muted py-2">Нет работ в этом разделе</td></tr>
+                            {% endfor %}
+                        {% else %}
+                        {% if section_entries %}
+                            {% set total_vol = 0 %}
+                            {% set total_exec = 0 %}
+                            {% for e in section_entries %}
+                                {% set total_vol = total_vol + (e.volume or 0) %}
+                                {% set total_exec = total_exec + (e.executed or 0) %}
+                                <tr class="work-row" data-work-id="{{ e.work.id }}" data-building-id="{{ group.building.id }}">
+                                    <td>{{ e.work.name or '—' }}</td>
+                                    <td>{{ "%.2f"|format(e.volume or 0) }}</td>
+                                    <td>{{ e.work.unit or '—' }}</td>
+                                    <td class="work-pct-cell">{% if e.percent is not none %}{{ "%.1f"|format(e.percent) }}%{% else %}N/A{% endif %}</td>
+                                    <td>{{ e.work.planned_completion_date.strftime('%d.%m.%Y') if e.work.planned_completion_date else '—' }}</td>
+                                    <td class="work-executed-cell">{{ "%.2f"|format(e.executed or 0) }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm work-daily-btn" data-work-id="{{ e.work.id }}" data-work-name="{{ (e.work.name or '')|e }}" title="Ежедневное выполнение">Ежедн.</button>
+                                            <button type="button" class="btn btn-outline-warning btn-sm work-edit-btn" data-work-id="{{ e.work.id }}" data-work-name="{{ (e.work.name or '')|e }}" data-volume="{{ e.volume or '' }}" data-unit="{{ (e.work.unit or '')|e }}" data-planned="{{ e.work.planned_completion_date.isoformat() if e.work.planned_completion_date else '' }}" data-initial-executed="{{ e.work.initial_executed if e.work.initial_executed is not none else '' }}" data-category="{{ e.work.category or '' }}" title="Редактировать">Ред.</button>
+                                            <form action="{{ url_for('project.delete_work', project_id=project.id, work_id=e.work.id) }}" method="post" class="d-inline" onsubmit="return confirm('Удалить работу «{{ (e.work.name or '')|e }}» и все записи выполнения?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <input type="hidden" name="next" value="{{ url_for('buildings.view_building', building_id=building.id) }}#schedules"/>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Удалить">Уд.</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            {% set pct_cat = (total_exec / total_vol * 100) if total_vol > 0 else None %}
+                            <tr class="table-secondary fw-semibold">
+                                <td class="text-end">Итого по разделу</td>
+                                <td>{{ "%.2f"|format(total_vol) }}</td>
+                                <td></td>
+                                <td class="text-end">
+                                    {% if pct_cat is not none %}
+                                        {{ "%.1f"|format(pct_cat) }}%
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td></td>
+                                <td class="text-end">{{ "%.2f"|format(total_exec) }}</td>
+                                <td></td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="7" class="text-center text-muted py-2">Нет работ в этом разделе</td></tr>
+                        {% endif %}
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <p class="text-muted">Нет данных. Добавьте работу или импортируйте из Excel на странице объекта.</p>
+    {% endfor %}
+</div>
+
+<!-- Модалка: добавить работу -->
+<div class="modal fade" id="addWorkModal" tabindex="-1" aria-labelledby="addWorkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('project.add_work', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="building_id" id="addWorkBuildingId" value="{{ building.id }}"/>
+                <input type="hidden" name="next" value="{{ url_for('buildings.view_building', building_id=building.id) }}#schedules"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addWorkModalLabel">Добавить работу</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted" id="addWorkBuildingName">{{ building.name or '—' }}</p>
+                    <div class="mb-2">
+                        <label class="form-label">Наименование <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required maxlength="500" placeholder="Название работы"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Объём <span class="text-danger">*</span></label>
+                        <input type="number" name="volume" class="form-control" step="any" min="0.0001" required placeholder="0"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Ед. изм.</label>
+                        <input type="text" name="unit" class="form-control" maxlength="50"
+                               list="sbUnitOptions"
+                               placeholder="м, м², м³, шт., п.м., т, кг, л"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">План. дата завершения</label>
+                        <input type="date" name="planned_date" class="form-control"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Раздел работ <span class="text-danger">*</span></label>
+                        <select name="category" class="form-select" required>
+                            <option value="Демонтажные работы">Демонтажные работы</option>
+                            <option value="Общестроительные работы" selected>Общестроительные работы</option>
+                            <option value="Инженерные системы">Инженерные системы</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Уже выполнено (до ежедневного учёта)</label>
+                        <input type="number" name="initial_executed" class="form-control" step="any" min="0" placeholder="0 — объём, учтённый импортом или вручную"/>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: редактировать работу -->
+<div class="modal fade" id="editWorkModal" tabindex="-1" aria-labelledby="editWorkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="editWorkForm" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="next" value="{{ url_for('buildings.view_building', building_id=building.id) }}#schedules"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editWorkModalLabel">Редактировать работу</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Наименование <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="editWorkName" class="form-control" required maxlength="500"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Объём <span class="text-danger">*</span></label>
+                        <input type="number" name="volume" id="editWorkVolume" class="form-control" step="any" min="0.0001" required/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Ед. изм.</label>
+                        <input type="text" name="unit" id="editWorkUnit" class="form-control" maxlength="50"
+                               list="sbUnitOptions"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">План. дата завершения</label>
+                        <input type="date" name="planned_date" id="editWorkPlanned" class="form-control"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Раздел работ <span class="text-danger">*</span></label>
+                        <select name="category" id="editWorkCategory" class="form-select" required>
+                            <option value="Демонтажные работы">Демонтажные работы</option>
+                            <option value="Общестроительные работы">Общестроительные работы</option>
+                            <option value="Инженерные системы">Инженерные системы</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Уже выполнено (до ежедневного учёта)</label>
+                        <input type="number" name="initial_executed" id="editWorkInitialExecuted" class="form-control" step="any" min="0" placeholder="0"/>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Общий список единиц измерения для форм работ -->
+<datalist id="sbUnitOptions">
+    <option value="м">
+    <option value="м²">
+    <option value="м³">
+    <option value="п.м.">
+    <option value="шт.">
+    <option value="т">
+    <option value="кг">
+    <option value="л">
+</datalist>
+
+<!-- Модалка: ежедневное выполнение (FullCalendar) -->
+<div class="modal fade" id="workDailyModal" tabindex="-1" aria-labelledby="workDailyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="workDailyModalLabel">Ежедневное выполнение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="workDailyCsrf" value="{{ csrf_token() }}"/>
+                <p class="text-muted small mb-2" id="workDailyModalWorkName">—</p>
+                <div class="row g-2 mb-3">
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Год</label>
+                        <select id="workDailyYear" class="form-select form-select-sm" style="width: auto;"></select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Месяц</label>
+                        <select id="workDailyMonth" class="form-select form-select-sm" style="width: auto;"></select>
+                    </div>
+                    <div class="col-auto d-flex align-items-end">
+                        <button type="button" class="btn btn-primary btn-sm" id="workDailyLoadBtn">Загрузить</button>
+                    </div>
+                </div>
+                <div id="workDailyCalendar" style="min-height: 360px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/ru.global.min.js"></script>
+<script>
+(function () {
+    var projectId = {{ project.id }};
+    var modalEl = document.getElementById('workDailyModal');
+    var workNameEl = document.getElementById('workDailyModalWorkName');
+    var yearSelect = document.getElementById('workDailyYear');
+    var monthSelect = document.getElementById('workDailyMonth');
+    var loadBtn = document.getElementById('workDailyLoadBtn');
+    var calendarEl = document.getElementById('workDailyCalendar');
+    var currentWorkId = null;
+    var calendar = null;
+
+    function getCsrf() { return (document.getElementById('workDailyCsrf') || {}).value || ''; }
+
+    function fillYearMonth() {
+        var y = new Date().getFullYear();
+        var i;
+        yearSelect.innerHTML = '';
+        for (i = y - 2; i <= y + 1; i++) {
+            var opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = i;
+            if (i === y) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+        monthSelect.innerHTML = '';
+        var months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+        for (i = 0; i < 12; i++) {
+            var o = document.createElement('option');
+            o.value = i + 1;
+            o.textContent = months[i];
+            if (i === new Date().getMonth()) o.selected = true;
+            monthSelect.appendChild(o);
+        }
+    }
+    fillYearMonth();
+
+    function loadDailyAndRender() {
+        if (!currentWorkId || !calendarEl) return;
+        var year = parseInt(yearSelect.value, 10);
+        var month = parseInt(monthSelect.value, 10);
+        var url = '/project/' + projectId + '/works/' + currentWorkId + '/daily_json?year=' + year + '&month=' + month;
+        fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                var dates = data.dates || [];
+                var executions = data.executions || [];
+                var events = [];
+                for (var i = 0; i < dates.length; i++) {
+                    events.push({
+                        start: dates[i],
+                        allDay: true,
+                        title: executions[i] != null ? String(Number(executions[i])) : '—',
+                        extendedProps: { date: dates[i], value: executions[i] }
+                    });
+                }
+                if (window.FullCalendar && calendar) {
+                    calendar.removeAllEvents();
+                    calendar.addEventSource(events);
+                    calendar.gotoDate(year + '-' + (month < 10 ? '0' : '') + month + '-01');
+                }
+            })
+            .catch(function () {
+                alert('Ошибка загрузки данных для календаря. Проверьте соединение и консоль браузера (F12).');
+            });
+    }
+
+    function updateWorkRow(workId, executed, percent) {
+        var row = document.querySelector('.work-row[data-work-id="' + workId + '"]');
+        if (!row) return;
+        var execCell = row.querySelector('.work-executed-cell');
+        var pctCell = row.querySelector('.work-pct-cell');
+        if (execCell) execCell.textContent = (executed != null ? Number(executed).toFixed(2) : '—');
+        if (pctCell) pctCell.textContent = (percent != null ? Number(percent).toFixed(1) + '%' : 'N/A');
+    }
+
+    function updateWorksSummaryFromJson(data) {
+        var buildings = data.works_summary_buildings || [];
+        buildings.forEach(function (b) {
+            var card = document.querySelector('.works-summary-building-card[data-building-id="' + b.building_id + '"]');
+            if (card) {
+                var progressBar = card.querySelector('.progress-bar');
+                if (progressBar) {
+                    var bpct = b.percent != null ? b.percent : 0;
+                    progressBar.style.width = Math.min(bpct, 100) + '%';
+                    progressBar.textContent = b.percent != null ? b.percent.toFixed(1) + '%' : 'N/A';
+                }
+            }
+            var tr = document.querySelector('#works-summary-table .works-summary-building-row[data-building-id="' + b.building_id + '"]');
+            if (tr && tr.cells.length >= 5) {
+                tr.cells[1].textContent = (b.total_volume != null ? Number(b.total_volume).toFixed(2) : '0.00');
+                tr.cells[2].textContent = (b.total_executed != null ? Number(b.total_executed).toFixed(2) : '0.00');
+                tr.cells[3].textContent = b.percent != null ? b.percent.toFixed(1) + '%' : 'N/A';
+                tr.cells[4].textContent = ((b.total_executed != null ? b.total_executed : 0) - (b.total_volume != null ? b.total_volume : 0)).toFixed(2);
+            }
+            var buildingCard = document.querySelector('#works-by-building .works-by-building-card[data-building-id="' + b.building_id + '"]');
+            if (buildingCard) {
+                var badge = buildingCard.querySelector('.card-header .works-summary-badge');
+                if (badge) badge.textContent = b.percent != null ? b.percent.toFixed(1) + '%' : 'N/A';
+            }
+        });
+    }
+
+    document.getElementById('addWorkModal').addEventListener('show.bs.modal', function (e) {
+        var btn = e.relatedTarget;
+        if (btn && btn.dataset.buildingId) {
+            document.getElementById('addWorkBuildingId').value = btn.dataset.buildingId;
+            document.getElementById('addWorkBuildingName').textContent = btn.dataset.buildingName || '—';
+        }
+    });
+
+    document.querySelectorAll('.work-edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-work-id');
+            document.getElementById('editWorkForm').action = '/project/' + projectId + '/works/' + id + '/edit';
+            document.getElementById('editWorkName').value = btn.getAttribute('data-work-name') || '';
+            document.getElementById('editWorkVolume').value = btn.getAttribute('data-volume') || '';
+            document.getElementById('editWorkUnit').value = btn.getAttribute('data-unit') || '';
+            document.getElementById('editWorkPlanned').value = btn.getAttribute('data-planned') || '';
+            document.getElementById('editWorkInitialExecuted').value = btn.getAttribute('data-initial-executed') || '';
+            var cat = btn.getAttribute('data-category') || 'Общестроительные работы';
+            var catSelect = document.getElementById('editWorkCategory');
+            if (catSelect) {
+                catSelect.value = cat;
+            }
+            new bootstrap.Modal(document.getElementById('editWorkModal')).show();
+        });
+    });
+
+    loadBtn.addEventListener('click', function () { loadDailyAndRender(); });
+
+    document.querySelectorAll('.work-daily-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            currentWorkId = btn.getAttribute('data-work-id');
+            workNameEl.textContent = btn.getAttribute('data-work-name') || '—';
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            if (!calendar && window.FullCalendar && calendarEl) {
+                calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'ru',
+                    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
+                    dateClick: function (info) {
+                        var d = info.dateStr;
+                        var val = prompt('Объём за день ( ' + d + ' ):', '');
+                        if (val === null) return;
+                        var num = parseFloat(val) || 0;
+                        var form = new FormData();
+                        form.append('csrf_token', getCsrf());
+                        form.append('date', d);
+                        form.append('value', num);
+                        fetch('/project/' + projectId + '/works/' + currentWorkId + '/update_daily', { method: 'POST', body: form, headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                            .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); })
+                            .then(function (res) {
+                                var data = res.data;
+                                if (res.ok && data && data.ok) {
+                                    updateWorkRow(currentWorkId, data.executed, data.percent);
+                                    loadDailyAndRender();
+                                    var summaryUrl = document.getElementById('works-summary') && document.getElementById('works-summary').getAttribute('data-works-summary-url');
+                                    if (summaryUrl) {
+                                        fetch(summaryUrl, { credentials: 'same-origin' }).then(function (sr) { return sr.json(); }).then(updateWorksSummaryFromJson).catch(function () {});
+                                    }
+                                } else {
+                                    alert(data && data.error ? data.error : 'Ошибка сохранения.');
+                                }
+                            })
+                            .catch(function () {
+                                alert('Ошибка запроса или ответ не в формате JSON. Проверьте консоль браузера (F12).');
+                            });
+                    },
+                    eventClick: function (info) {
+                        var d = info.event.extendedProps.date || info.event.startStr && info.event.startStr.slice(0, 10);
+                        var cur = info.event.extendedProps.value != null ? info.event.extendedProps.value : '';
+                        var val = prompt('Объём за день ( ' + d + ' ):', cur);
+                        if (val === null) return;
+                        var num = parseFloat(val) || 0;
+                        var form = new FormData();
+                        form.append('csrf_token', getCsrf());
+                        form.append('date', d);
+                        form.append('value', num);
+                        fetch('/project/' + projectId + '/works/' + currentWorkId + '/update_daily', { method: 'POST', body: form, headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                            .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); })
+                            .then(function (res) {
+                                var data = res.data;
+                                if (res.ok && data && data.ok) {
+                                    updateWorkRow(currentWorkId, data.executed, data.percent);
+                                    loadDailyAndRender();
+                                    var summaryUrl = document.getElementById('works-summary') && document.getElementById('works-summary').getAttribute('data-works-summary-url');
+                                    if (summaryUrl) {
+                                        fetch(summaryUrl, { credentials: 'same-origin' }).then(function (sr) { return sr.json(); }).then(updateWorksSummaryFromJson).catch(function () {});
+                                    }
+                                } else {
+                                    alert(data && data.error ? data.error : 'Ошибка сохранения.');
+                                }
+                            })
+                            .catch(function () {
+                                alert('Ошибка запроса или ответ не в формате JSON. Проверьте консоль браузера (F12).');
+                            });
+                    }
+                });
+                calendar.render();
+            }
+            loadDailyAndRender();
+        });
+    });
+})();
+</script>

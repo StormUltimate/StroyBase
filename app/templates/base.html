@@ -1,0 +1,617 @@
+<!-- StroyBase: base.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="StroyBase — цифровая база ПТО для хранения документов, фото, видео и планов объектов строительства и капитального ремонта">
+    <title>StroyBase — База ПТО</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    <style>
+        /* Стили для модального просмотра медиа */
+        #modalImage {
+            cursor: grab;
+            user-select: none;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.15s ease-out;
+        }
+        #modalImage.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+        #mediaModal .modal-content {
+            background: black;
+        }
+        #mediaModal .modal-body {
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            height: 70vh;
+        }
+        #mediaModal .modal-dialog {
+            max-width: 92vw;
+            max-height: 92vh;
+        }
+        /* Баннер метки в модальном просмотре */
+        #markerBannerWrapper {
+            display: none;
+            transition: opacity 0.15s ease-out;
+        }
+        #markerBanner {
+            background: rgba(15, 23, 42, 0.7);
+            color: #f8f9fa;
+            backdrop-filter: blur(4px);
+        }
+        #markerBannerFrameWrapper {
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background: #000;
+        }
+        #markerBannerFrame {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+        #markerBanner.marker-banner-size-high #markerBannerFrameWrapper {
+            width: 360px;
+            height: 230px;
+        }
+        #markerBanner.marker-banner-size-medium #markerBannerFrameWrapper {
+            width: 300px;
+            height: 190px;
+        }
+        #markerBanner.marker-banner-size-mini #markerBannerFrameWrapper {
+            width: 220px;
+            height: 150px;
+        }
+        /* Таблицы документов: курсор и ресайз колонок */
+        .sb-doc-table tbody tr.sb-doc-row {
+            cursor: pointer;
+        }
+        .sb-doc-table th {
+            position: relative;
+        }
+        .sb-doc-resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+            cursor: col-resize;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="stroybase-sidebar-overlay d-lg-none" id="sidebar-overlay" aria-hidden="true"></div>
+
+<div class="d-flex">
+    {% include 'sidebar.html' %}
+
+    <div class="flex-grow-1" style="margin-left: 280px;">
+
+        <!-- Хлебные крошки в стиле проводника (Все объекты > Проект > Корпус > Этаж) -->
+        {% include 'shared/breadcrumb.html' %}
+
+        <div class="container-fluid py-4">
+            <!-- Flash сообщения -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category in ['error', 'danger'] else category }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<!-- ======================= МОДАЛЬНОЕ ОКНО ПРОСМОТРА МЕДИА ======================= -->
+<div class="modal fade" id="mediaModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content overflow-hidden">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-white" id="modalTitle">Просмотр</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-black">
+                <img id="modalImage" src="" alt="" ondragstart="return false;">
+                <video id="modalVideo" class="img-fluid" controls style="max-height: 70vh; display: none;"></video>
+            </div>
+            <div id="markerBannerWrapper" class="px-3 pb-2">
+                <div id="markerBanner" class="rounded-3 px-3 py-2 d-flex justify-content-between align-items-center marker-banner-size-medium">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-primary"><i class="bi bi-geo-alt-fill"></i> Маркер на плане</span>
+                        <span id="markerBannerText" class="small text-truncate" style="max-width: 260px;"></span>
+                        <div id="markerBannerFrameWrapper" class="ms-2">
+                            <iframe id="markerBannerFrame" src="" title="План этажа с меткой"></iframe>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end ms-2">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small">Размер</span>
+                            <select id="markerBannerSize" class="form-select form-select-sm bg-dark text-light border-secondary">
+                                <option value="high">Высокий</option>
+                                <option value="medium" selected>Средний</option>
+                                <option value="mini">Мини</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small">Прозрачность</span>
+                            <input type="range" id="markerBannerOpacity" min="30" max="100" value="75" class="form-range" style="width: 120px;">
+                        </div>
+                        <a id="markerBannerLink" href="#" target="_blank" class="btn btn-sm btn-outline-light">
+                            Открыть план
+                        </a>
+                        <button id="markerBannerClose" type="button" class="btn btn-sm btn-outline-light">
+                            Скрыть
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center border-0 flex-wrap gap-2">
+                <button id="prevBtn" class="btn btn-outline-light">‹ Предыдущее</button>
+                <button id="zoomOutBtn" class="btn btn-outline-light" title="Уменьшить">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <button id="zoomInBtn" class="btn btn-outline-light" title="Увеличить">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button id="resetZoomBtn" class="btn btn-outline-light">Сброс вида</button>
+                <button id="fullscreenBtn" class="btn btn-outline-light">Fullscreen</button>
+                <button id="markerBannerToggleBtn" class="btn btn-outline-info" style="display: none;">
+                    Метка на плане
+                </button>
+                <button id="nextBtn" class="btn btn-outline-light">Следующее ›</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======================= МОДАЛЬНОЕ ОКНО ЗАГРУЗКИ ФАЙЛОВ ======================= -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('project.upload_documents', project_id=g_project.id) if g_project else '#' }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузить файлы</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if g_project %}
+                    <div class="mb-3">
+                        <label class="form-label">Корпус</label>
+                        <select name="building_id" class="form-select">
+                            <option value="">Общие для объекта</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Этаж</label>
+                        <select name="floor_id" class="form-select">
+                            <option value="">Общие для корпуса / объекта</option>
+                        </select>
+                    </div>
+                    {% elif floors %}
+                    <div class="mb-3">
+                        <label class="form-label">Привязать к этажу</label>
+                        <select name="floor_id" class="form-select">
+                            <option value="">Общие для корпуса</option>
+                            {% for floor in floors %}
+                            <option value="{{ floor.id }}">{{ floor.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">Файлы</label>
+                        <input type="file" name="files" class="form-control" multiple required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input name="title" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Вид работ / теги</label>
+                        <select name="work_type_ids" class="form-select" multiple>
+                            {% for dt in DocType.query.order_by(DocType.sort_order).all() %}
+                            <option value="{{ dt.id }}">{{ dt.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Можно выбрать один или несколько видов работ из списка.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дополнительные теги (через запятую)</label>
+                        <input type="text" name="tags" class="form-control" placeholder="монолит, отделка, кровля">
+                        <small class="form-text text-muted">Новые теги будут сохранены как виды работ и станут доступны в списке.</small>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="uploadIsDocumentImage" name="is_document_image">
+                        <label class="form-check-label" for="uploadIsDocumentImage">
+                            Считать изображения сканами документов (акты, письма и т.п.)
+                        </label>
+                    </div>
+                    {% if floors %}
+                    <div class="mb-3">
+                        <label class="form-label">Привязать к этажу</label>
+                        <select name="floor_id" class="form-select">
+                            <option value="">Общие для корпуса</option>
+                            {% for floor in floors %}
+                            <option value="{{ floor.id }}">{{ floor.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    /* ======================= JS ДЛЯ МОДАЛЬНОГО ПРОСМОТРА ======================= */
+    let currentDocs = [];
+    let currentIndex = 0;
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let markerBannerVisible = false;
+    let markerBannerSize = 'medium';
+    let markerBannerOpacity = 0.75;
+
+    const modalImage = document.getElementById('modalImage');
+    const modalBody = document.querySelector('#mediaModal .modal-body');
+    const markerBannerWrapper = document.getElementById('markerBannerWrapper');
+    const markerBanner = document.getElementById('markerBanner');
+    const markerBannerText = document.getElementById('markerBannerText');
+    const markerBannerFrame = document.getElementById('markerBannerFrame');
+    const markerBannerLink = document.getElementById('markerBannerLink');
+    const markerBannerSizeSelect = document.getElementById('markerBannerSize');
+    const markerBannerOpacityRange = document.getElementById('markerBannerOpacity');
+    const markerBannerCloseBtn = document.getElementById('markerBannerClose');
+    const markerBannerToggleBtn = document.getElementById('markerBannerToggleBtn');
+
+    function openModal(docId) {
+        const tabPane = document.querySelector('.tab-pane.show');
+        if (!tabPane) return;
+        
+        currentDocs = Array.from(tabPane.querySelectorAll('.card')).map(card => ({
+            id: card.dataset.docId,
+            url: card.dataset.url,
+            title: card.dataset.title || card.querySelector('.card-title')?.innerText || 'Без названия',
+            isVideo: card.dataset.isVideo === 'true',
+            hasMarker: card.dataset.hasMarker === '1',
+            markerUrl: card.dataset.markerUrl || '',
+            markerLabel: card.dataset.markerLabel || '',
+            markerEmbedUrl: card.dataset.markerEmbedUrl || ''
+        }));
+        
+        currentIndex = currentDocs.findIndex(d => d.id === docId);
+        if (currentIndex === -1) currentIndex = 0;
+        
+        showMedia(currentDocs[currentIndex]);
+        new bootstrap.Modal(document.getElementById('mediaModal')).show();
+    }
+
+    function applyMarkerBannerState() {
+        if (!markerBannerWrapper || !markerBanner) return;
+        markerBannerWrapper.style.opacity = markerBannerOpacity.toString();
+        markerBanner.classList.remove('marker-banner-size-high', 'marker-banner-size-medium', 'marker-banner-size-mini');
+        markerBanner.classList.add('marker-banner-size-' + markerBannerSize);
+        markerBannerWrapper.style.display = markerBannerVisible ? 'block' : 'none';
+    }
+
+    function updateMarkerBanner(doc) {
+        if (!markerBannerWrapper || !markerBannerToggleBtn) return;
+
+        if (doc.hasMarker && doc.markerUrl) {
+            markerBannerToggleBtn.style.display = 'inline-block';
+            markerBannerText.textContent = doc.markerLabel || 'Метка на плане этажа';
+            markerBannerLink.href = doc.markerUrl;
+            if (markerBannerFrame) {
+                markerBannerFrame.src = doc.markerEmbedUrl || doc.markerUrl;
+            }
+        } else {
+            markerBannerToggleBtn.style.display = 'none';
+            markerBannerVisible = false;
+            if (markerBannerFrame) {
+                markerBannerFrame.removeAttribute('src');
+            }
+        }
+        applyMarkerBannerState();
+    }
+
+    function showMedia(doc) {
+        document.getElementById('modalTitle').innerText = doc.title;
+        const img = modalImage;
+        const video = document.getElementById('modalVideo');
+        
+        if (doc.isVideo) {
+            img.style.display = 'none';
+            video.style.display = 'block';
+            video.src = doc.url;
+            try {
+                video.play();
+            } catch (e) {
+                // Автовоспроизведение может быть заблокировано браузером
+            }
+        } else {
+            // При переключении с видео на фото — полностью останавливаем видео
+            if (!video.paused) {
+                video.pause();
+            }
+            video.currentTime = 0;
+            video.removeAttribute('src');
+            video.load();
+            video.style.display = 'none';
+            img.style.display = 'block';
+            img.src = doc.url;
+            resetView();
+        }
+
+        updateMarkerBanner(doc);
+    }
+
+    function updateTransform() {
+        modalImage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    function clampPosition() {
+        const containerW = modalBody.clientWidth;
+        const containerH = modalBody.clientHeight;
+        const imgW = modalImage.naturalWidth * scale;
+        const imgH = modalImage.naturalHeight * scale;
+
+        // Горизонталь: не даём уехать дальше границ, но учитываем случаи,
+        // когда изображение уже меньше контейнера.
+        if (imgW <= containerW) {
+            translateX = 0;
+        } else {
+            const minX = containerW - imgW;
+            const maxX = 0;
+            translateX = Math.max(minX, Math.min(maxX, translateX));
+        }
+
+        // Вертикаль: симметричное ограничение вверх/вниз.
+        if (imgH <= containerH) {
+            translateY = 0;
+        } else {
+            const minY = containerH - imgH;
+            const maxY = 0;
+            translateY = Math.max(minY, Math.min(maxY, translateY));
+        }
+    }
+
+    function resetView() {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        updateTransform();
+    }
+
+    function prevMedia() {
+        if (currentDocs.length === 0) return;
+        currentIndex = (currentIndex - 1 + currentDocs.length) % currentDocs.length;
+        showMedia(currentDocs[currentIndex]);
+    }
+
+    function nextMedia() {
+        if (currentDocs.length === 0) return;
+        currentIndex = (currentIndex + 1) % currentDocs.length;
+        showMedia(currentDocs[currentIndex]);
+    }
+
+    /* Клавиатура и события */
+    document.addEventListener('keydown', function(e) {
+        if (!document.getElementById('mediaModal').classList.contains('show')) return;
+        if (e.key === 'ArrowLeft') prevMedia();
+        if (e.key === 'ArrowRight') nextMedia();
+        if (e.key === 'Escape') bootstrap.Modal.getInstance(document.getElementById('mediaModal')).hide();
+    });
+
+    function zoomAtPoint(newScale, clientX, clientY) {
+        const rect = modalImage.getBoundingClientRect();
+        const offsetX = clientX - rect.left;
+        const offsetY = clientY - rect.top;
+        if (newScale !== scale) {
+            translateX -= offsetX * (newScale / scale - 1);
+            translateY -= offsetY * (newScale / scale - 1);
+            scale = newScale;
+            clampPosition();
+            updateTransform();
+        }
+    }
+
+    modalImage.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        if (document.getElementById('modalVideo').style.display === 'block') return;
+        
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        const newScale = Math.max(1, Math.min(4, scale + delta));
+        zoomAtPoint(newScale, e.clientX, e.clientY);
+    });
+
+    modalImage.addEventListener('mousedown', function(e) {
+        if (scale <= 1) return;
+        e.preventDefault();
+        isDragging = true;
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        modalImage.classList.add('dragging');
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        translateX = e.clientX - startX;
+        translateY = e.clientY - startY;
+        clampPosition();
+        updateTransform();
+    });
+
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+        modalImage.classList.remove('dragging');
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', prevMedia);
+    document.getElementById('nextBtn').addEventListener('click', nextMedia);
+    document.getElementById('resetZoomBtn').addEventListener('click', resetView);
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', function () {
+            if (document.getElementById('modalVideo').style.display === 'block') return;
+            const rect = modalImage.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const newScale = Math.max(1, Math.min(4, scale + 0.25));
+            zoomAtPoint(newScale, centerX, centerY);
+        });
+    }
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', function () {
+            if (document.getElementById('modalVideo').style.display === 'block') return;
+            const rect = modalImage.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const newScale = Math.max(1, Math.min(4, scale - 0.25));
+            if (newScale === 1) {
+                resetView();
+            } else {
+                zoomAtPoint(newScale, centerX, centerY);
+            }
+        });
+    }
+    document.getElementById('fullscreenBtn').addEventListener('click', function() {
+        const elem = document.querySelector('#mediaModal .modal-content');
+        if (elem.requestFullscreen) elem.requestFullscreen();
+    });
+
+    modalImage.addEventListener('dblclick', resetView);
+
+    // Панель метки: события
+    if (markerBannerToggleBtn) {
+        markerBannerToggleBtn.addEventListener('click', function () {
+            markerBannerVisible = !markerBannerVisible;
+            applyMarkerBannerState();
+        });
+    }
+    if (markerBannerCloseBtn) {
+        markerBannerCloseBtn.addEventListener('click', function () {
+            markerBannerVisible = false;
+            applyMarkerBannerState();
+        });
+    }
+    if (markerBannerSizeSelect) {
+        markerBannerSizeSelect.addEventListener('change', function () {
+            const val = this.value;
+            if (['high', 'medium', 'mini'].includes(val)) {
+                markerBannerSize = val;
+                applyMarkerBannerState();
+            }
+        });
+    }
+    if (markerBannerOpacityRange) {
+        markerBannerOpacityRange.addEventListener('input', function () {
+            const v = parseInt(this.value, 10);
+            const clamped = Math.min(100, Math.max(30, isNaN(v) ? 75 : v));
+            markerBannerOpacity = clamped / 100;
+            applyMarkerBannerState();
+        });
+    }
+
+    // При закрытии модального окна полностью останавливаем видео и сбрасываем состояние
+    document.getElementById('mediaModal').addEventListener('hidden.bs.modal', function () {
+        const video = document.getElementById('modalVideo');
+        if (video) {
+            if (!video.paused) {
+                video.pause();
+            }
+            video.currentTime = 0;
+            video.removeAttribute('src');
+            video.load();
+        }
+        resetView();
+        markerBannerVisible = false;
+        applyMarkerBannerState();
+    });
+
+    /* ======================= Таблицы документов: клик по строке + ресайз колонок ======================= */
+    function initDocTables() {
+        document.querySelectorAll('.sb-doc-table').forEach(function (table) {
+            // Клик по строке
+            table.querySelectorAll('tbody tr[data-doc-url]').forEach(function (row) {
+                row.addEventListener('click', function (e) {
+                    // Не реагировать на клики по формам/кнопкам/ссылкам
+                    if (e.target.closest('form') || e.target.closest('button') || e.target.closest('a')) {
+                        return;
+                    }
+                    if (window.getSelection && window.getSelection().toString()) {
+                        return;
+                    }
+                    var url = this.dataset.docUrl;
+                    if (url) {
+                        window.open(url, '_blank');
+                    }
+                });
+            });
+            // Ресайз колонок
+            var ths = table.querySelectorAll('thead th');
+            ths.forEach(function (th) {
+                var resizer = document.createElement('span');
+                resizer.className = 'sb-doc-resizer';
+                th.appendChild(resizer);
+                var startX, startWidth;
+                resizer.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    startX = e.pageX;
+                    startWidth = th.offsetWidth;
+                    document.body.style.cursor = 'col-resize';
+                    function onMove(ev) {
+                        var newWidth = Math.max(60, startWidth + (ev.pageX - startX));
+                        th.style.width = newWidth + 'px';
+                    }
+                    function onUp() {
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                        document.body.style.cursor = '';
+                    }
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initDocTables);
+</script>
+
+</body>
+</html>

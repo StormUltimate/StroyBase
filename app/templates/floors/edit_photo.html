@@ -1,0 +1,150 @@
+<!-- StroyBase: floors/edit_photo.html — форма в стиле модального окна -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#media" class="btn btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left me-2"></i>Назад к галерее этажа
+    </a>
+
+    <div class="modal-dialog modal-dialog-centered modal-lg mx-auto" style="max-width: 900px;">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать фото</h5>
+                <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#media" class="btn-close" aria-label="Закрыть"></a>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('floors.edit_photo', photo_id=doc.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="row g-4">
+                        <div class="col-12 col-md-5">
+                            {% if doc.thumbnail_path %}
+                            <div class="d-flex align-items-center justify-content-center bg-light rounded-4 border shadow-sm"
+                                 style="height: 340px; max-height: 340px; overflow: hidden;">
+                                <img
+                                    src="{{ url_for('static', filename=doc.thumbnail_path.lstrip('/')) }}"
+                                    alt="{{ doc.title or doc.filename }}"
+                                    class="img-fluid"
+                                    style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                                >
+                            </div>
+                            {% else %}
+                            <div class="d-flex align-items-center justify-content-center bg-light rounded-4 border shadow-sm"
+                                 style="height: 340px; max-height: 340px;">
+                                <span class="text-muted small">Предпросмотр недоступен</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Текущий этаж</label>
+                                <div class="form-control-plaintext small text-muted">{{ floor.name }}</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Текущий корпус</label>
+                                <div class="form-control-plaintext small text-muted">
+                                    {{ floor.building.name if floor.building else '—' }}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Перенести в корпус</label>
+                                <select name="building_id" class="form-select form-select-sm">
+                                    <option value="">Оставить в текущем корпусе</option>
+                                    {% for b in buildings %}
+                                    <option value="{{ b.id }}" {% if doc.building_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Перенести на этаж</label>
+                                <select name="floor_id" class="form-select form-select-sm">
+                                    <option value="">Оставить на текущем этаже</option>
+                                    {% for f in project_floors %}
+                                    <option value="{{ f.id }}" {% if doc.floor_id == f.id %}selected{% endif %}>
+                                        {{ f.building.name }} — {{ f.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">При выборе этажа корпус подставится автоматически по этажу.</small>
+                            </div>
+                            <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="title" class="form-control" value="{{ doc.title or '' }}" placeholder="Название фото">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="кладка, отопление, КС, ...">{{ doc.description or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Виды работ / теги</label>
+                        {% for dt in all_doc_types %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="work_type_ids" value="{{ dt.id }}"
+                                   id="photo-tag-{{ dt.id }}"
+                                   {% if dt.id in current_types %}checked{% endif %}>
+                            <label class="form-check-label" for="photo-tag-{{ dt.id }}">{{ dt.name }}</label>
+                        </div>
+                        {% endfor %}
+                        <small class="form-text text-muted d-block mb-2">Отметьте подходящие виды работ или задайте свои теги.</small>
+                        <input type="text" name="tags" class="form-control form-control-sm"
+                               placeholder="Новые теги через запятую (например: отделка, монолит)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дата съёмки / создания</label>
+                        <input type="date" name="file_modified_date" class="form-control" 
+                               value="{{ doc.file_modified_at.strftime('%Y-%m-%d') if doc.file_modified_at else '' }}">
+                        <small class="form-text text-muted">Дата создания файла или съёмки (формат: ДД.ММ.ГГГГ, можно указать вручную)</small>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" id="isDocumentImage" name="is_document_image" value="1"
+                               {% if doc.is_document_image %}checked{% endif %}>
+                        <label class="form-check-label" for="isDocumentImage">
+                            Это скан документа (относить к списку документов, а не к фото)
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Маркер на плане этажа</label>
+                        <div class="mb-1">
+                            {% if doc.mark_id %}
+                            <span class="badge bg-success">Маркер задан</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Маркер не задан</span>
+                            {% endif %}
+                        </div>
+                        {% if doc.mark_id and doc.marker and doc.marker.plan_id %}
+                        <p class="small mb-1">
+                            <a href="{{ url_for('floors.floor_plan', floor_id=floor.id, plan_id=doc.marker.plan_id) }}?highlight_mark={{ doc.mark_id }}"
+                               class="link-secondary" target="_blank" rel="noopener noreferrer">
+                                Открыть план с этим маркером
+                            </a>
+                        </p>
+                        {% endif %}
+                        <small class="form-text text-muted d-block mb-2">Маркер — это точка на плане этажа, с которой связано фото.</small>
+                        <div class="mt-2 d-flex flex-wrap gap-2">
+                            <a href="{{ url_for('floors.select_mark_for_photo', photo_id=doc.id) }}"
+                               class="btn btn-sm btn-outline-secondary">
+                                Выбрать точку на плане
+                            </a>
+                            {% if doc.mark_id %}
+                            <form method="POST" action="{{ url_for('floors.delete_mark_from_photo', photo_id=doc.id) }}"
+                                  onsubmit="return confirm('Удалить привязку фото к текущей метке?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    Удалить маркер
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="submit" class="btn btn-primary">Сохранить</button>
+                                <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#media" class="btn btn-secondary">Отмена</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

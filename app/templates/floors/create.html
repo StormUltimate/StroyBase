@@ -1,0 +1,28 @@
+<!-- StroyBase: floors/create.html -->
+<!-- СУЩЕСТВУЮЩИЙ, СОВМЕСТИМЫЙ С create_floor.html — используем этот -->
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Добавить этаж в корпус: {{ building.name }}</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input type="text" class="form-control" name="name" required placeholder="например, 5 этаж">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Тип этажа</label>
+            <select class="form-select" name="floor_type">
+                <option value="Обычный этаж">Обычный этаж</option>
+                <option value="Подвал">Подвал</option>
+                <option value="Кровля">Кровля</option>
+                <option value="Техэтаж">Техэтаж</option>
+                <option value="Мансарда">Мансарда</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Создать</button>
+        <a href="{{ url_for('buildings.view_building', building_id=building.id) }}" class="btn btn-secondary">Отмена</a>
+    </form>
+</div>
+{% endblock %}

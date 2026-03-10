@@ -1,0 +1,262 @@
+<!-- StroyBase: сводные дашборды — по людям (сейчас), по графикам работ (в перспективе) -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="fw-bold mb-4">Общая информация</h2>
+    <p class="text-muted mb-4">Сводные дашборды по объектам: учёт людей и пример графика производства работ (ГПР) для демонстрации.</p>
+
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#dash-people">По людям</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#dash-schedules">План работ (ГПР)</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="dash-people">
+            <h5 class="mb-3">KPI по объектам (люди и выполнение работ)</h5>
+            <p class="text-muted small mb-3">
+                Сводка по ключевым показателям: средний % выполнения работ по объекту (по данным раздела «Работы по корпусу»)
+                и суммарная нагрузка по людям (по данным учёта DailyWorkforce). Всё на одной панели, без переходов.
+            </p>
+            {% if projects %}
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered align-middle text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="min-width: 140px;">KPI</th>
+                            {% for project in projects %}
+                            <th>
+                                <div class="fw-semibold text-truncate" title="{{ project.name }}">{{ project.name }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-start fw-semibold">План работ (средний % выполнения)</td>
+                            {% for project in projects %}
+                            {% set pct = project_planning.get(project.id) %}
+                            <td>
+                                {% if pct is not none %}
+                                    <div class="fs-5 fw-bold">
+                                        {{ "%.1f"|format(pct) }}%
+                                        {% if pct >= 90 %}
+                                            <span class="text-success" title="В графике"><i class="bi bi-arrow-up"></i></span>
+                                        {% elif pct >= 60 %}
+                                            <span class="text-warning" title="Небольшое отставание"><i class="bi bi-arrow-right"></i></span>
+                                        {% else %}
+                                            <span class="text-danger" title="Существенное отставание"><i class="bi bi-arrow-down"></i></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar {% if pct >= 90 %}bg-success{% elif pct >= 60 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ pct|round(0, 'floor') }}%;"></div>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted small">Нет данных по работам</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td class="text-start fw-semibold">Люди (суммарно, чел·смен)</td>
+                            {% for project in projects %}
+                            {% set stats = people_stats.get(project.id, {'total_workers': 0, 'total_hours': 0}) %}
+                            <td>
+                                <div class="fw-semibold">
+                                    {{ stats.total_workers }} чел
+                                </div>
+                                <div class="small text-muted">
+                                    {{ "%.1f"|format(stats.total_hours) }} ч
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <h6 class="mb-1">Люди на объекте по дням месяца</h6>
+                                    <p class="text-muted small mb-0">Столбиковая диаграмма: суммарное количество людей (день+ночь) по выбранному объекту. Шкала до 150 человек.</p>
+                                </div>
+                                <form method="get" class="d-flex flex-wrap align-items-center gap-2">
+                                    <select name="chart_project_id" class="form-select form-select-sm">
+                                        {% for p in projects %}
+                                        <option value="{{ p.id }}" {% if chart_project_id == p.id %}selected{% endif %}>{{ p.name|truncate(24) }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select name="chart_month" class="form-select form-select-sm">
+                                        {% set month_names = ['01','02','03','04','05','06','07','08','09','10','11','12'] %}
+                                        {% for m in range(1,13) %}
+                                        <option value="{{ m }}" {% if chart_month == m %}selected{% endif %}>{{ "%02d"|format(m) }}.{{ chart_year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="hidden" name="chart_year" value="{{ chart_year }}">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Обновить</button>
+                                </form>
+                            </div>
+                            <canvas id="peopleMonthlyChart" style="max-height: 260px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mt-3 mt-lg-0">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h6 class="mb-2">Краткая интерпретация</h6>
+                            <p class="text-muted small mb-2">
+                                График показывает распределение людей по дням выбранного месяца. Максимальное значение шкалы зафиксировано на уровне 150 человек,
+                                чтобы пики были хорошо видны даже на крупных объектах.
+                            </p>
+                            <ul class="small text-muted mb-0">
+                                <li><strong>Столбики выше 100 чел.</strong> — пиковые дни, стоит проверять безопасность и логистику.</li>
+                                <li><strong>Нули и провалы</strong> — либо выходные/простоя, либо нет внесённых данных в DailyWorkforce.</li>
+                                <li>Для детализации по подрядчикам и сменам откройте дашборд конкретного объекта.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">Нет объектов для отображения KPI.</p>
+            {% endif %}
+        </div>
+
+        <div class="tab-pane fade" id="dash-schedules">
+            <h5 class="mb-3">Демонстрационный график производства работ (ГПР)</h5>
+            <p class="text-muted small mb-3">
+                Ниже показан пример диаграммы ГПР в стиле типового Excel‑шаблона: подготовка, демонтаж по корпусам, благоустройство и завершение.
+                Для реальных объектов детальный план ведётся на дашборде проекта во вкладке «Сводка по объёмам работ» / ГПП.
+            </p>
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted">Пример для показа — тестовые даты и задачи</span>
+                        <a href="{{ url_for('project.dashboard', project_id=projects[0].id) }}#project-graphs" class="btn btn-outline-primary btn-sm" {% if not projects %}disabled aria-disabled="true"{% endif %}>
+                            Открыть план работ первого объекта
+                        </a>
+                    </div>
+                    <div class="border rounded p-2 bg-white">
+                        <div class="mermaid" id="demo-gpr-gantt">
+gantt
+    title Пример графика производства работ
+    dateFormat YYYY-MM-DD
+    axisFormat %d.%m
+
+    section Подготовка
+    Открытие ордеров и ППР      :p1, 2024-07-01, 7d
+    Подготовительные мероприятия:after p1, 7d
+
+    section Демонтаж корпусов
+    Демонтаж корп. 1           :d1, 2024-07-15, 20d
+    Демонтаж корп. 2           :after d1, 18d
+    Демонтаж корп. 3           :after d1, 22d
+
+    section Вывоз и сортировка
+    Вывоз мусора               :w1, 2024-08-10, 14d
+    Сортировка и утилизация    :after w1, 10d
+
+    section Завершение и благоустройство
+    Благоустройство территории :b1, 2024-09-01, 20d
+    Сдача объекта по акту      :after b1, 7d
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mb-0">
+                На реальном объекте задачи и даты берутся из таблицы `plan_tasks` (общий план производства, ГПП); диаграмма строится автоматически.
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-4 p-3 bg-light rounded small text-muted">
+        Для детальной работы с графиками и людьми по конкретному объекту откройте его дашборд через «Календарь по объекту» или из списка проектов.
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Столбиковый график по людям за месяц (день + ночь)
+    var ctx = document.getElementById('peopleMonthlyChart');
+    if (ctx && window.Chart) {
+        var labels = {{ chart_labels|tojson }};
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'День',
+                        data: {{ chart_values_day|tojson }},
+                        backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        borderWidth: 1,
+                        maxBarThickness: 14,
+                        categoryPercentage: 0.7,
+                        barPercentage: 0.7,
+                    },
+                    {
+                        label: 'Ночь',
+                        data: {{ chart_values_night|tojson }},
+                        backgroundColor: 'rgba(148, 163, 184, 0.9)',
+                        borderColor: 'rgba(148, 163, 184, 1)',
+                        borderWidth: 1,
+                        maxBarThickness: 14,
+                        categoryPercentage: 0.7,
+                        barPercentage: 0.7,
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'День месяца' },
+                        ticks: { maxRotation: 0, autoSkip: true }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 150,
+                        title: { display: true, text: 'Человек' }
+                    }
+                },
+                plugins: {
+                    legend: { display: true },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.dataset.label + ': ' + ctx.parsed.y + ' чел.';
+                            },
+                            footer: function(items) {
+                                var sum = items.reduce(function(acc, it) { return acc + it.parsed.y; }, 0);
+                                return 'Всего: ' + sum + ' чел.';
+                            },
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (window.mermaid) {
+        mermaid.initialize({ startOnLoad: false, theme: 'base', gantt: { axisFormat: '%d.%m' } });
+        var el = document.getElementById('demo-gpr-gantt');
+        if (el) {
+            mermaid.run({ nodes: [el] }).catch(function (err) {
+                console.warn('Mermaid demo GPR error:', err);
+            });
+        }
+    }
+});
+</script>
+{% endblock %}

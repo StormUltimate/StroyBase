@@ -1,0 +1,400 @@
+/* app/static/css/style.css — StroyBase */
+/* Тёмная боковая панель, читаемый текст, мобильность, корпоративный цвет #0065dc */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f0f2f5;
+    color: #212529;
+}
+
+/* Боковая панель — тёмная, контрастная */
+.bg-dark {
+    background-color: #1e2125 !important;
+}
+
+.text-white-50 {
+    color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Карточки корпусов в боковой панели — тёмный фон + цветная полоса */
+.sidebar-building-card {
+    background-color: #2c3034 !important;
+    border-left: 5px solid;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.sidebar-building-card.border-primary { border-left-color: #0065dc; } /* Корпоративный цвет */
+.sidebar-building-card.border-success { border-left-color: #28a745; }
+.sidebar-building-card.border-warning { border-left-color: #ffc107; }
+.sidebar-building-card.border-purple { border-left-color: #6f42c1; }
+.sidebar-building-card.border-danger { border-left-color: #dc3545; }
+
+/* Текст внутри карточек корпусов — белый и читаемый */
+.sidebar-building-card .text-white,
+.sidebar-building-card h6,
+.sidebar-building-card small {
+    color: #ffffff !important;
+}
+
+.sidebar-building-card small {
+    opacity: 0.8;
+}
+
+/* Главная страница — таблица объектов */
+.table {
+    background-color: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.table thead {
+    background-color: #0065dc; /* Корпоративный цвет */
+    color: white;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Кнопки в таблице и везде — корпоративный стиль #0065dc */
+.btn-primary {
+    background-color: #0065dc;
+    border-color: #0065dc;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #004bb0; /* Темнее для hover */
+    border-color: #004bb0;
+}
+
+.btn-secondary {
+    background-color: #0065dc;
+    border-color: #0065dc;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #004bb0;
+    border-color: #004bb0;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+/* Основной контент */
+.main-content {
+    margin-left: 340px;
+    padding: 2rem;
+}
+
+@media (max-width: 992px) {
+    .main-content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+    
+    .bg-dark {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+}
+
+/* Превью документов (иконка ссылки) */
+.doc-link {
+    color: #0065dc; /* Корпоративный цвет */
+    font-weight: 500;
+}
+
+.doc-link:hover {
+    text-decoration: underline;
+}
+
+/* Добавлено для полной высоты панели */
+.vh-100 {
+    height: 100vh !important;
+}
+
+.h-100 {
+    height: 100% !important;
+}
+
+/* Вкладки */
+.nav-tabs .nav-link.active {
+    background-color: #f8f9fa;
+    border-bottom-color: #f8f9fa;
+}
+
+.tab-pane {
+    background-color: white;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-top: none;
+}
+
+/* Планы */
+.position-relative img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Логотип в боковой панели — стили для адаптивности */
+.logo-img {
+    max-width: 200px;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+/* Боковые панели — улучшения */
+.bg-secondary.bg-opacity-10 {
+    background-color: rgba(108, 117, 125, 0.1) !important;
+}
+
+.list-group-item.bg-transparent {
+    background-color: transparent !important;
+}
+
+/* Хлебные крошки — корпоративный акцент */
+.breadcrumb-item a {
+    color: #0065dc;
+}
+
+.breadcrumb-item.active {
+    color: #212529;
+}
+/* Добавьте эти строки в конец файла app/static/css/style.css */
+/* Расширение контента на всю ширину экрана (для десктопной версии) */
+
+/* Основной контейнер контента — убираем боковые отступы */
+.container-fluid.py-5 {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
+@media (min-width: 1200px) {
+    .container-fluid.py-5 {
+        padding-left: 4rem !important;
+        padding-right: 4rem !important;
+        max-width: none; /* Полная ширина */
+    }
+}
+
+/* Боковая панель остаётся фиксированной шириной 280px */
+.bg-dark {
+    width: 280px !important;
+}
+
+/* Чтобы таблица не растягивалась слишком сильно — ограничиваем максимальную ширину */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table {
+    min-width: 1200px; /* Чтобы все колонки комфортно помещались */
+}
+/* Добавьте в конец файла app/static/css/style.css */
+/* Улучшения для списка объектов — шире и удобнее */
+
+/* Основной контент — почти на всю ширину с комфортными отступами */
+.container-fluid.py-5 {
+    max-width: none;
+}
+
+/* На больших экранах — больше отступов для читаемости */
+@media (min-width: 1400px) {
+    .container-fluid.px-4.px-xl-5 {
+        padding-left: 6rem !important;
+        padding-right: 6rem !important;
+    }
+}
+
+/* Таблица — минимальная ширина, чтобы все колонки помещались */
+.table {
+    min-width: 1300px;
+    font-size: 0.95rem;
+}
+
+/* Заголовки таблицы — чуть светлее фон */
+.table-light {
+    background-color: #f8f9fa;
+}
+
+/* Центрирование колонок с датами и действиями */
+.text-center {
+    text-align: center !important;
+}
+
+/* Кнопки в колонке действий — компактнее */
+.btn-sm {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.875rem;
+}
+
+/* ========== Боковая панель: дерево объектов (иерархия) ========== */
+.stroybase-sidebar .nav-link.hover-bg:hover,
+.stroybase-sidebar .hover-bg:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff !important;
+}
+.stroybase-sidebar .sb-tree-chevron {
+    transition: transform 0.2s ease;
+    font-size: 0.7rem;
+}
+.stroybase-sidebar .btn[aria-expanded="true"] .sb-tree-chevron {
+    transform: rotate(90deg);
+}
+.stroybase-sidebar .nav-label {
+    letter-spacing: 0.05em;
+}
+.stroybase-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.stroybase-sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+@media (max-width: 991.98px) {
+    .stroybase-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+    }
+    .stroybase-sidebar.show-mobile {
+        transform: translateX(0);
+    }
+    .stroybase-sidebar-overlay.show {
+        pointer-events: auto;
+    }
+    .stroybase-sidebar-overlay:not(.show) {
+        pointer-events: none;
+    }
+}
+
+/* ========== Страница проекта: одна колонка, секция «Корпуса проекта» ========== */
+.sb-project-dashboard .col-12 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+@media (min-width: 768px) {
+    .sb-project-dashboard .col-12 {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+@media (min-width: 992px) {
+    .sb-project-dashboard .col-12 {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+/* Карточки корпусов в основной области */
+.sb-building-card {
+    border-radius: 0.5rem;
+    transition: box-shadow 0.2s ease;
+}
+.sb-building-card:hover {
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1) !important;
+}
+.sb-building-actions .btn,
+.sb-building-actions form {
+    flex: 0 0 auto;
+}
+.sb-building-actions .btn:focus-visible,
+.sb-project-dashboard .btn:focus-visible,
+.sb-project-dashboard a.btn:focus-visible {
+    outline: 2px solid #0065dc;
+    outline-offset: 2px;
+}
+.sb-building-actions .btn-warning:focus-visible {
+    outline-color: #ffc107;
+}
+.sb-building-actions .btn-danger:focus-visible {
+    outline-color: #dc3545;
+}
+
+/* Страницы корпуса и этажа: одна колонка (как дашборд проекта) */
+.sb-object-view .col-12 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+@media (min-width: 768px) {
+    .sb-object-view .col-12 {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+@media (min-width: 992px) {
+    .sb-object-view .col-12 {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+.sb-object-view .btn:focus-visible,
+.sb-object-view a.btn:focus-visible {
+    outline: 2px solid #0065dc;
+    outline-offset: 2px;
+}
+.sb-object-view .btn-warning:focus-visible {
+    outline-color: #ffc107;
+}
+.sb-object-view .btn-danger:focus-visible {
+    outline-color: #dc3545;
+}
+
+/* Правая колонка на странице корпуса: список этажей по клику, без кнопок */
+.sb-object-right-sidebar:empty {
+    display: none;
+}
+@media (min-width: 992px) {
+    .sb-object-right-sidebar {
+        border-left: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+}
+.sb-floors-list .sb-floor-link {
+    color: #0065dc;
+    text-decoration: none;
+    font-weight: 500;
+}
+.sb-floors-list .sb-floor-link:hover {
+    text-decoration: underline;
+}
+.sb-floors-list .sb-floor-link:focus-visible {
+    outline: 2px solid #0065dc;
+    outline-offset: 2px;
+}
+
+/* Сводка по объёмам: строка/карточка «По объекту» — светлый фон для общей информации */
+.sb-summary-by-object {
+    background-color: #e8f0fe;
+    border-color: #b3c9f0;
+}
+.sb-summary-by-object .card-body {
+    background-color: #e8f0fe;
+}
+.sb-summary-by-object-row {
+    background-color: #e8f0fe;
+}
+.sb-summary-by-object-row:hover {
+    background-color: #d6e5fc;
+}

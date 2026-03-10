@@ -1,0 +1,636 @@
+<!-- StroyBase: вид этажа — наследует shared/object_view.html -->
+{% extends "shared/object_view.html" %}
+
+{% block back_button %}
+<a href="{{ url_for('buildings.view_building', building_id=building.id) }}"
+   class="btn btn-outline-secondary"
+   aria-label="Назад к корпусу">
+    <i class="bi bi-arrow-left me-2"></i>Назад к корпусу
+</a>
+{% endblock %}
+
+{% block upload_button %}
+<button type="button" class="btn btn-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#uploadModalFloor"
+        aria-label="Загрузить фото и документы">
+    <i class="bi bi-upload me-2"></i>Загрузить фото/документы
+</button>
+{% endblock %}
+{% block object_actions %}
+<a href="{{ url_for('floors.edit_floor', floor_id=floor.id) }}" class="btn btn-warning btn-sm" aria-label="Редактировать этаж">Редактировать</a>
+<form action="{{ url_for('floors.delete_floor', floor_id=floor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Удалить этаж «{{ floor.name }}»? Все документы и данные этажа будут удалены.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="btn btn-danger btn-sm" aria-label="Удалить этаж">Удалить</button>
+</form>
+{% endblock %}
+
+{% block object_header %}
+<p class="text-muted small mb-4">
+    {% if floor.floor_type %}{{ floor.floor_type }}{% endif %}
+    {% if floor.total_area_m2 is not none %} · {{ floor.total_area_m2|round(1) }} м²{% endif %}
+    {% if floor.note %} · {{ floor.note|truncate(60) }}{% endif %}
+</p>
+{% endblock %}
+
+{% block page_title %}Этаж «{{ floor.name }}»{% endblock %}
+
+{% block tabs %}
+<li class="nav-item">
+    <a class="nav-link active" data-bs-toggle="tab" href="#tech">Тех. информация</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#media">Фото и видео</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#docs">Документы</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" data-bs-toggle="tab" href="#plans">Планы</a>
+</li>
+{% endblock %}
+
+{% block tab_content %}
+<!-- Фото и видео -->
+<div class="tab-pane fade" id="media">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h4 class="mb-0">Фото и видео этажа</h4>
+    </div>
+    <form method="get" action="{{ url_for('floors.view_floor', floor_id=floor.id) }}#media" class="row g-2 mb-4 p-3 bg-light rounded">
+        <div class="col-md-2">
+            <label class="form-label small">Дата загрузки от</label>
+            <input type="date" name="filter_uploaded_from" class="form-control form-control-sm" value="{{ (filter_values or {}).filter_uploaded_from or '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Дата загрузки до</label>
+            <input type="date" name="filter_uploaded_to" class="form-control form-control-sm" value="{{ (filter_values or {}).filter_uploaded_to or '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Дата создания файла от</label>
+            <input type="date" name="filter_modified_from" class="form-control form-control-sm" value="{{ (filter_values or {}).filter_modified_from or '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Дата создания файла до</label>
+            <input type="date" name="filter_modified_to" class="form-control form-control-sm" value="{{ (filter_values or {}).filter_modified_to or '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Поиск по имени файла</label>
+            <input type="text" name="filter_filename" class="form-control form-control-sm" value="{{ (filter_values or {}).filter_filename or '' }}" placeholder="Часть имени">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary btn-sm me-1">Применить фильтры</button>
+            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#media" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+        </div>
+    </form>
+    {% with docs=media_docs or documents, floor=floor, show_marker_link=true, filter_values=filter_values|default({}) %}
+        {% include 'shared/gallery_grid.html' %}
+    {% endwith %}
+</div>
+
+<!-- Документы -->
+<div class="tab-pane fade" id="docs">
+    <h4>Документы этажа</h4>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle sb-doc-table" id="documentsTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Название</th>
+                    <th style="min-width: 380px; width: 45%;">Имя файла</th>
+                    <th>Формат</th>
+                    <th>Вид документа</th>
+                    <th>Дата</th>
+                    <th class="text-end small text-muted">Размер, КБ</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in doc_docs %}
+                <tr data-doc-url="{{ url_for('floors.view_document', doc_id=doc.id) }}" class="sb-doc-row">
+                    <td class="align-middle">{{ doc.title or '—' }}</td>
+                    <td class="align-middle filename-cell">
+                        <a href="{{ url_for('floors.view_document', doc_id=doc.id) }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="text-primary text-decoration-none d-flex align-items-center gap-2"
+                           title="Открыть / скачать в новой вкладке">
+                            <strong>{{ doc.filename }}</strong>
+                            <i class="bi bi-box-arrow-up-right small text-muted"></i>
+                        </a>
+                    </td>
+                    <td class="align-middle">{{ doc.filename.split('.')[-1]|upper }}</td>
+                    <td class="align-middle">{{ doc.work_types|map(attribute='name')|join(', ') or '—' }}</td>
+                    <td class="align-middle">{{ doc.uploaded_at.strftime('%d.%m.%Y') if doc.uploaded_at else '—' }}</td>
+                    <td class="text-end small text-muted align-middle">
+                        {{ (doc.file_size // 1024)|int if doc.file_size else '—' }}
+                    </td>
+                    <td class="align-middle">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="event.stopPropagation(); openFolder('{{ doc.stored_path }}')">
+                                <i class="bi bi-folder-open"></i>
+                            </button>
+                            <a href="{{ url_for('floors.view_document', doc_id=doc.id, download=1) }}"
+                               class="btn btn-outline-secondary"
+                               title="Сохранить на ПК"
+                               onclick="event.stopPropagation();">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-primary"
+                                    onclick="event.stopPropagation(); window.location.href='{{ url_for('project.edit_document', doc_id=doc.id) }}';">
+                                Ред.
+                            </button>
+                            <form action="{{ url_for('floors.delete_document', doc_id=doc.id) }}"
+                                  method="POST"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('Удалить документ «{{ doc.filename }}»?\nФайл останется на диске.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-outline-danger" onclick="event.stopPropagation();">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        Документы по этому этажу отсутствуют
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Техническая информация (базовые параметры и материалы) -->
+<div class="tab-pane fade show active" id="tech">
+    <h4 class="mb-3">Техническая информация этажа</h4>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Базовые характеристики</h6>
+                    <p class="text-muted small mb-3">Основные площади по этажу.</p>
+                    <dl class="row mb-0 small">
+                        <dt class="col-7">Площадь этажа (общая)</dt>
+                        <dd class="col-5 text-end">
+                            {% if floor.total_area_m2 is not none %}
+                                {{ floor.total_area_m2|round(2) }} м²
+                            {% else %}
+                                не указана
+                            {% endif %}
+                        </dd>
+                        <dt class="col-7 mt-2">Площадь рабочей зоны</dt>
+                        <dd class="col-5 text-end mt-2">
+                            {% if floor.area_m2 is not none %}
+                                {{ floor.area_m2|round(2) }} м²
+                            {% else %}
+                                не указана
+                            {% endif %}
+                        </dd>
+                        <dt class="col-12 mt-3 text-muted">Площади потолка, стен, погонные и куб. метры добавляйте в блоке «Площади и величины» ниже.</dt>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Сводка по фактическим материалам</h6>
+                    <p class="text-muted small mb-2">Сумма по записям «Движение материалов» (приход/расход) с привязкой к этому этажу.</p>
+                    {% if material_summary %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Материал</th>
+                                    <th>Бренд / Марка</th>
+                                    <th>Ед.</th>
+                                    <th class="text-end">Количество (сумма)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in material_summary %}
+                                <tr>
+                                    <td>{{ row.name }}</td>
+                                    <td>{{ row.brand or '—' }}</td>
+                                    <td>{{ row.unit or '—' }}</td>
+                                    <td class="text-end">{{ row.quantity_total|round(2) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Сводка пуста — добавьте записи в разделе «Движение материалов» с привязкой к этому этажу.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Площади и величины этажа</h5>
+        <a href="{{ url_for('floors.create_quantity', floor_id=floor.id) }}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Добавить площадь / величину
+        </a>
+    </div>
+    <p class="text-muted small mb-2">Площадь потолка, стен, погонные метры (плинтус и т.д.), кубические метры — отдельными строками. Потом по ним можно вести материалы.</p>
+    <div class="table-responsive mb-4">
+        <table class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Наименование</th>
+                    <th class="text-end">Значение</th>
+                    <th>Ед. изм.</th>
+                    <th>Примечание</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in quantities %}
+                <tr>
+                    <td>{{ q.name or '—' }}</td>
+                    <td class="text-end">{{ q.quantity|round(2) if q.quantity is not none else '—' }}</td>
+                    <td>{{ q.unit or '—' }}</td>
+                    <td class="small text-muted">{{ (q.note or '')|truncate(40) or '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('floors.edit_quantity', floor_id=floor.id, quantity_id=q.id) }}"
+                           class="btn btn-sm btn-outline-primary me-1">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form action="{{ url_for('floors.delete_quantity', floor_id=floor.id, quantity_id=q.id) }}"
+                              method="POST" style="display:inline;"
+                              onsubmit="return confirm('Удалить «{{ q.name or 'величину' }}»?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        Площади и величины пока не добавлены. Нажмите «Добавить площадь / величину».
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+        <h5 class="mb-0">План / факт по материалам</h5>
+    </div>
+    <p class="text-muted small mb-2">
+        Сводная таблица по материалам этажа: плановые объёмы из плана по ТХ и фактические объёмы по движениям материалов с привязкой к этому этажу.
+    </p>
+    <div class="table-responsive mb-4">
+        <table class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Материал</th>
+                    <th>Бренд</th>
+                    <th class="text-end">План, кол-во</th>
+                    <th class="text-end">Факт, кол-во</th>
+                    <th>Ед.</th>
+                    <th class="text-end">Цена за ед., ₽</th>
+                    <th class="text-end">План, ₽</th>
+                    <th class="text-end">Факт, ₽</th>
+                    <th class="text-end">Отклонение, %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in material_plan_fact_rows %}
+                <tr>
+                    <td>{{ row.material.name or '—' }}</td>
+                    <td>{{ row.material.brand or '—' }}</td>
+                    <td class="text-end">
+                        {{ row.plan_qty|float|round(2) if row.plan_qty is not none else '—' }}
+                    </td>
+                    <td class="text-end">
+                        {{ row.fact_qty|float|round(2) if row.fact_qty is not none else '—' }}
+                    </td>
+                    <td>{{ row.unit or '—' }}</td>
+                    <td class="text-end">
+                        {{ row.price_per_unit|float|round(2) if row.price_per_unit is not none else '—' }}
+                    </td>
+                    <td class="text-end">
+                        {{ row.plan_cost|float|round(2) if row.plan_cost is not none else '—' }}
+                    </td>
+                    <td class="text-end">
+                        {{ row.fact_cost|float|round(2) if row.fact_cost is not none else '—' }}
+                    </td>
+                    <td class="text-end">
+                        {% if row.deviation_percent is not none and row.severity_css %}
+                            <span class="{{ row.severity_css }}">
+                                {{ row.deviation_percent|float|round(1) }}%
+                            </span>
+                        {% elif row.deviation_percent is not none %}
+                            {{ row.deviation_percent|float|round(1) }}%
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        План по материалам для этого этажа ещё не заполнен. Добавьте позиции в разделе «План (ТХ)» и движения материалов.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Материалы на этаже</h5>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('floors.create_material', floor_id=floor.id) }}"
+               class="btn btn-outline-primary btn-sm" title="План по ТХ / проектной документации">
+                <i class="bi bi-plus-lg me-1"></i>План (ТХ)
+            </a>
+            <a href="{{ url_for('movement.index', project_id=floor.building.project_id, building_id=floor.building_id, floor_id=floor.id) }}"
+               class="btn btn-primary btn-sm" title="Приход, расход, перемещение">
+                <i class="bi bi-plus-lg me-1"></i>Движение
+            </a>
+        </div>
+    </div>
+    <p class="text-muted small mb-2">Записи о движении с привязкой к этому этажу. Столбец «Проектный объём» — из позиций плана по ТХ (при совпадении наименования).</p>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Наименование</th>
+                    <th>Бренд</th>
+                    <th class="text-end">Проектный объём</th>
+                    <th class="text-end">Кол-во</th>
+                    <th>Ед.</th>
+                    <th>Тип</th>
+                    <th>Дата</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in floor_movements %}
+                <tr>
+                    <td>{{ m.material_name or '—' }}</td>
+                    <td>{{ m.brand or '—' }}</td>
+                    <td class="text-end">{% if project_quantity_by_movement.get(m.id) is not none %}{{ project_quantity_by_movement.get(m.id)|float|round(2) }}{% else %}—{% endif %}</td>
+                    <td class="text-end">{{ m.quantity|float|round(2) if m.quantity is not none else '—' }}</td>
+                    <td>{{ m.unit or '—' }}</td>
+                    <td>
+                        {% if m.movement_type == 'Приход' %}<span class="badge bg-success">Приход</span>
+                        {% elif m.movement_type == 'Расход' %}<span class="badge bg-warning text-dark">Расход</span>
+                        {% elif m.movement_type == 'Перемещение' %}<span class="badge bg-info">Перемещение</span>
+                        {% else %}{{ m.movement_type or '—' }}{% endif %}
+                    </td>
+                    <td>{{ m.movement_date.strftime('%d.%m.%Y') if m.movement_date else '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('movement.edit_movement', movement_id=m.id) }}"
+                           class="btn btn-sm btn-outline-primary" title="Редактировать и привязать документы">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        Записей о движении с привязкой к этому этажу пока нет. Добавьте план по ТХ (План) или приход/расход (Движение).
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+        <h5 class="mb-0">Сертификаты материалов этажа</h5>
+        <a href="{{ url_for('floors.upload_floor_document', floor_id=floor.id, return_to='create_material') }}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-upload me-1"></i>Загрузить сертификат
+        </a>
+    </div>
+    <p class="text-muted small mb-2">
+        Документы, привязанные как сертификаты к материалам этого этажа. Полный список документов этажей и корпусов — на вкладке «Документы».
+    </p>
+    <div class="table-responsive mb-4">
+        <table class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Материал</th>
+                    <th>Бренд</th>
+                    <th>Сертификат</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in material_certificates_rows %}
+                <tr>
+                    <td>{{ row.material.name or '—' }}</td>
+                    <td>{{ row.material.brand or '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('floors.view_document', doc_id=row.document.id) }}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-file-earmark-pdf"></i> {{ row.document.title or row.document.filename or 'Сертификат' }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('floors.edit_material', floor_id=floor.id, material_id=row.material.id) }}"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Материал
+                        </a>
+                        <a href="{{ url_for('project.edit_document', doc_id=row.document.id) }}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil-square"></i> Документ
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        Сертификаты к материалам пока не привязаны. Привяжите сертификат в карточке материала или загрузите новый документ.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+        <h5 class="mb-0">Оборудование этажа</h5>
+        <a href="{{ url_for('floors.create_equipment', floor_id=floor.id) }}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Добавить оборудование
+        </a>
+    </div>
+    <div class="table-responsive mb-4">
+        <table class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Наименование</th>
+                    <th>Бренд / марка</th>
+                    <th>Паспорт</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipment_list %}
+                <tr>
+                    <td>{{ eq.name or '—' }}</td>
+                    <td>{{ eq.brand or '—' }}</td>
+                    <td>
+                        {% if eq.passport_document_id %}
+                        <a href="{{ url_for('floors.view_document', doc_id=eq.passport_document_id) }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Открыть паспорт">
+                            <i class="bi bi-file-earmark-pdf"></i> Открыть
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('floors.edit_equipment', floor_id=floor.id, equipment_id=eq.id) }}" class="text-muted small">Привязать</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('floors.edit_equipment', floor_id=floor.id, equipment_id=eq.id) }}"
+                           class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
+                        <form action="{{ url_for('floors.delete_equipment', floor_id=floor.id, equipment_id=eq.id) }}"
+                              method="POST" style="display:inline;"
+                              onsubmit="return confirm('Удалить оборудование «{{ eq.name or '—' }}»?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">Оборудование пока не добавлено.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Планы -->
+<div class="tab-pane fade" id="plans">
+    <h4>Планы этажа</h4>
+    {% if plans %}
+    <div class="row g-3">
+        {% for plan in plans %}
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <img src="{{ url_for('static', filename=plan.image_path.lstrip('/')) if plan.image_path else '/static/images/placeholder-plan.jpg' }}"
+                     class="card-img-top" alt="{{ plan.custom_name or 'План' }}"
+                     style="height: 180px; object-fit: cover;">
+                <div class="card-body">
+                    <h5 class="card-title">{{ plan.custom_name or 'План этажа' }}</h5>
+                    <p class="card-text small text-muted">
+                        Загружен: {{ plan.uploaded_at.strftime('%d.%m.%Y') }}
+                    </p>
+                    <a href="{{ url_for('floors.floor_plan', floor_id=floor.id, plan_id=plan.id) }}"
+                       class="btn btn-sm btn-primary">Открыть</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Планов пока нет. Загрузите первый план.
+    </div>
+    {% endif %}
+    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#uploadPlanModal">
+        <i class="bi bi-upload me-1"></i>Загрузить новый план
+    </button>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Модальное окно загрузки документов этажа -->
+<div class="modal fade" id="uploadModalFloor" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data"
+                  action="{{ url_for('floors.upload_documents', floor_id=floor.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузить документы / фото / видео</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Файлы</label>
+                        <input type="file" name="files[]" class="form-control" multiple required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название (общее для всех файлов)</label>
+                        <input type="text" name="title" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Виды работ</label>
+                        {% for dt in DocType.query.order_by(DocType.sort_order).all() %}
+                        <div class="form-check">
+                            <input type="checkbox" name="work_type_ids" value="{{ dt.id }}" class="form-check-input">
+                            <label class="form-check-label">{{ dt.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" id="floorUploadIsDocumentImage" name="is_document_image" value="1">
+                        <label class="form-check-label" for="floorUploadIsDocumentImage">
+                            Считать загружаемые изображения сканами документов
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно загрузки плана -->
+<div class="modal fade" id="uploadPlanModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data"
+                  action="{{ url_for('floors.upload_floor_plan', floor_id=floor.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузить план этажа</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название плана</label>
+                        <input type="text" name="custom_name" class="form-control" value="Новый план" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Файл (PDF или изображение)</label>
+                        <input type="file" name="plan_file" class="form-control" required accept="image/*,.pdf">
+                    </div>
+                    <div class="mb-3 d-none" id="pdf-page">
+                        <label class="form-label">Номер страницы PDF</label>
+                        <input type="number" name="page_number" class="form-control" min="1" value="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

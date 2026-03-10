@@ -1,0 +1,1179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-0 sb-project-dashboard">
+    <div class="row" style="min-height: 100vh;">
+        <!-- Основная область (без второй боковой панели) -->
+        <div class="col-12 p-3 p-md-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary" aria-label="Назад ко всем объектам">
+                        <i class="bi bi-arrow-left me-2"></i>Назад ко всем объектам
+                    </a>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal" aria-label="Загрузить фото и документы">
+                        <i class="bi bi-upload me-2"></i>Загрузить фото/документы
+                    </button>
+                    <a href="{{ url_for('buildings.create_building', project_id=project.id) }}" class="btn btn-outline-primary" aria-label="Добавить корпус">
+                        <i class="bi bi-plus-lg me-1"></i>Добавить корпус
+                    </a>
+                </div>
+                <div class="text-muted small">
+                    <strong>Общая площадь:</strong>
+                    {% if project.total_area_m2 is defined and project.total_area_m2 is not none %}
+                        {{ project.total_area_m2|round(1) }} м²
+                    {% else %}
+                        не указана
+                    {% endif %}
+                    {% if project.address or project.contract_number %}
+                        · {{ project.address or project.contract_number or '' }}
+                    {% endif %}
+                </div>
+            </div>
+            <h3 class="mb-4">Проект «{{ project.name }}»</h3>
+
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#project-graphs">Сводка по объёмам работ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#media">Фото и видео</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#docs">Документы</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tech">Тех. информация</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#project-people">Исполнители работ</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Сводка по объёмам работ: только сводка по объёмам и общая таблица по видам работ (график/ГПП — отдельно) -->
+                <div class="tab-pane fade show active" id="project-graphs">
+                    {% include 'project/project_graphs.html' %}
+                </div>
+
+                <!-- Фото и видео -->
+                <div class="tab-pane fade" id="media">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <h4 class="mb-0">Фото и видео проекта</h4>
+                    </div>
+                    <form method="get" action="{{ url_for('project.dashboard', project_id=project.id) }}#media" class="row g-2 mb-4 p-3 bg-light rounded">
+                        <div class="col-md-2">
+                            <label class="form-label small">Корпус</label>
+                            <select name="building_id" id="media-building-filter" class="form-select form-select-sm">
+                                <option value="">Все корпуса</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}" {% if request.args.get('building_id')|string == b.id|string %}selected{% endif %}>{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Этаж</label>
+                            <select name="floor_id" id="media-floor-filter" class="form-select form-select-sm">
+                                <option value="">Все этажи</option>
+                                {% for f in project_floors or [] %}
+                                <option value="{{ f.id }}" {% if request.args.get('floor_id')|string == f.id|string %}selected{% endif %}>
+                                    {{ f.building.name }} — {{ f.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Тег / вид работ</label>
+                            <select name="doc_type_id" class="form-select form-select-sm">
+                                <option value="">Все виды</option>
+                                {% for dt in doc_types %}
+                                <option value="{{ dt.id }}" {% if request.args.get('doc_type_id')|string == dt.id|string %}selected{% endif %}>{{ dt.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Тип медиа</label>
+                            <select name="media_type" class="form-select form-select-sm">
+                                <option value="all" {% if request.args.get('media_type', 'all') == 'all' %}selected{% endif %}>Все</option>
+                                <option value="photo" {% if request.args.get('media_type') == 'photo' %}selected{% endif %}>Фото</option>
+                                <option value="video" {% if request.args.get('media_type') == 'video' %}selected{% endif %}>Видео</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Дата файла от</label>
+                            <input type="date" name="from_date" class="form-control form-control-sm" value="{{ request.args.get('from_date') or '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Дата файла до</label>
+                            <input type="date" name="to_date" class="form-control form-control-sm" value="{{ request.args.get('to_date') or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-sm me-1">Применить фильтры</button>
+                            <a href="{{ url_for('project.dashboard', project_id=project.id) }}#media" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+                        </div>
+                    </form>
+                    {% with docs=media_docs, floor=none, show_marker_link=true %}
+                        {% include 'shared/gallery_grid.html' %}
+                    {% endwith %}
+                </div>
+
+                <!-- Документы -->
+                <div class="tab-pane fade" id="docs">
+                    <h4>Документы проекта</h4>
+                    <form method="get" action="{{ url_for('project.dashboard', project_id=project.id) }}#docs" class="row g-2 mb-4 p-3 bg-light rounded">
+                        <div class="col-md-2">
+                            <label class="form-label small">Корпус</label>
+                            <select name="building_id" id="docs-building-filter" class="form-select form-select-sm">
+                                <option value="">Все корпуса</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}" {% if request.args.get('building_id')|string == b.id|string %}selected{% endif %}>{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Этаж</label>
+                            <select name="floor_id" id="docs-floor-filter" class="form-select form-select-sm">
+                                <option value="">Все этажи</option>
+                                {% for f in project_floors or [] %}
+                                <option value="{{ f.id }}" {% if request.args.get('floor_id')|string == f.id|string %}selected{% endif %}>
+                                    {{ f.building.name }} — {{ f.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Тег / вид работ</label>
+                            <select name="doc_type_id" class="form-select form-select-sm">
+                                <option value="">Все виды</option>
+                                {% for dt in doc_types %}
+                                <option value="{{ dt.id }}" {% if request.args.get('doc_type_id')|string == dt.id|string %}selected{% endif %}>{{ dt.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Дата файла от</label>
+                            <input type="date" name="from_date" class="form-control form-control-sm" value="{{ request.args.get('from_date') or '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Дата файла до</label>
+                            <input type="date" name="to_date" class="form-control form-control-sm" value="{{ request.args.get('to_date') or '' }}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm me-1">Применить фильтры</button>
+                            <a href="{{ url_for('project.dashboard', project_id=project.id) }}#docs" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+                        </div>
+                    </form>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle sb-doc-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Описание</th>
+                                    <th>Вид документа</th>
+                                    <th>Корпус</th>
+                                    <th>Этаж</th>
+                                    <th>Дата</th>
+                                    <th class="text-end small text-muted">Размер, КБ</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in doc_docs %}
+                                <tr data-doc-url="{{ url_for('project.view_document', doc_id=doc.id) }}" class="sb-doc-row">
+                                    <td class="align-middle">{{ doc.title or doc.filename|truncate(30) }}</td>
+                                    <td class="align-middle">{{ (doc.description or '')|truncate(50) or '—' }}</td>
+                                    <td class="align-middle">
+                                        {% for wt in doc.work_types %}
+                                        <span class="badge bg-secondary me-1">{{ wt.name }}</span>
+                                        {% else %}—{% endfor %}
+                                    </td>
+                                    <td class="align-middle">{{ doc.building.name if doc.building else '—' }}</td>
+                                    <td class="align-middle">{{ doc.floor.name if doc.floor else '—' }}</td>
+                                    <td class="align-middle">{{ doc.uploaded_at.strftime('%d.%m.%Y') if doc.uploaded_at else '—' }}</td>
+                                    <td class="text-end small text-muted align-middle">{{ (doc.file_size // 1024)|int if doc.file_size else '—' }}</td>
+                                    <td class="align-middle">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('project.view_document', doc_id=doc.id, download=1) }}"
+                                               class="btn btn-outline-secondary"
+                                               title="Сохранить на ПК"
+                                               onclick="event.stopPropagation();">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-primary"
+                                                    onclick="event.stopPropagation(); window.location.href='{{ url_for('project.edit_document', doc_id=doc.id) }}';">
+                                                Ред.
+                                            </button>
+                                            <form action="{{ url_for('project.delete_document', doc_id=doc.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Удалить документ из базы? Файл на диске останется.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <button type="submit" class="btn btn-outline-danger" onclick="event.stopPropagation();"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="8" class="text-center text-muted py-5">Нет документов по заданным фильтрам</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tech">
+                    <h4 class="mb-3">Сводная техническая информация по объекту</h4>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2">Базовые характеристики объекта</h6>
+                                    <p class="text-muted small mb-3">Краткая сводка по корпусам и площадям.</p>
+                                    <dl class="row mb-0 small">
+                                        <dt class="col-7">Корпусов в объекте</dt>
+                                        <dd class="col-5 text-end">{{ buildings|length }}</dd>
+                                        <dt class="col-7 mt-2">Этажей всего</dt>
+                                        <dd class="col-5 text-end mt-2">
+                                            {% set floors_count = project_floors|length if project_floors else 0 %}
+                                            {{ floors_count }}
+                                        </dd>
+                                        <dt class="col-7 mt-2">Суммарная площадь этажей</dt>
+                                        <dd class="col-5 text-end mt-2">
+                                            {% if total_floors_area %}
+                                                {{ total_floors_area|round(1) }} м²
+                                            {% else %}
+                                                не указана
+                                            {% endif %}
+                                        </dd>
+                                        <dt class="col-7 mt-2">Общая площадь по проекту</dt>
+                                        <dd class="col-5 text-end mt-2">
+                                            {% if project.total_area_m2 is defined and project.total_area_m2 is not none %}
+                                                {{ project.total_area_m2|round(1) }} м²
+                                            {% else %}
+                                                не указана
+                                            {% endif %}
+                                        </dd>
+                                        <dt class="col-12 mt-3 text-muted">
+                                            Детализированные высоты и площади стен/потолков добавим после согласования структуры.
+                                        </dt>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2">Сводка материалов по объекту</h6>
+                                    {% if project_material_summary %}
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-sm table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Тег / Категория</th>
+                                                    <th>Материал</th>
+                                                    <th>Бренд / Марка</th>
+                                                    <th>Ед.</th>
+                                                    <th class="text-end">План</th>
+                                                    <th class="text-end">Факт</th>
+                                                    <th class="text-end">Стоимость факт.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for row in project_material_summary %}
+                                                <tr>
+                                                    <td>{{ row.category or '—' }}</td>
+                                                    <td>{{ row.name }}</td>
+                                                    <td>{{ row.brand or '—' }}</td>
+                                                    <td>{{ row.unit or '—' }}</td>
+                                                    <td class="text-end">
+                                                        {% if row.planned_total %}
+                                                            {{ row.planned_total|round(2) }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-end">
+                                                        {% if row.actual_total %}
+                                                            {{ row.actual_total|round(2) }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-end">
+                                                        {% if row.total_cost %}
+                                                            {{ row.total_cost|round(2) }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted">Сводка пуста — по этажам объекта пока не заведены материалы.</p>
+                                    {% endif %}
+
+                                    <hr class="my-3">
+                                    <h6 class="card-title mb-2">Площади и величины по объекту</h6>
+                                    {% if project_quantities_summary %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Наименование</th>
+                                                    <th class="text-end">Суммарное значение</th>
+                                                    <th>Ед. изм.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for row in project_quantities_summary %}
+                                                <tr>
+                                                    <td>{{ row.name or '—' }}</td>
+                                                    <td class="text-end">
+                                                        {% if row.total_quantity %}
+                                                            {{ row.total_quantity|round(2) }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ row.unit or '—' }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mb-0">Сводка по площадям пуста — по этажам объекта пока не заведены площади и величины.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-muted small mb-0">
+                        Для детальной разбивки по зонам (санузлы, коридоры, помещения) и видам поверхностей (пол, стены, потолок)
+                        будут добавлены отдельные сущности и расчёты, когда определим финальный перечень параметров.
+                    </p>
+                </div>
+
+                <!-- Исполнители работ: справочник + календарь по дням -->
+                <div class="tab-pane fade" id="project-people">
+                    <h4 class="mb-4">Исполнители работ</h4>
+
+                    <div class="mb-4">
+                        <h5 class="mb-2">Справочник исполнителей</h5>
+                        <p class="text-muted small mb-2">Список подрядчиков и исполнителей для выбора в календаре (без дат и объёмов).</p>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#performersModal">
+                            <i class="bi bi-list-ul me-1"></i>Управление списком
+                        </button>
+                    </div>
+
+                    <div>
+                        <h5 class="mb-2">Календарь по дням</h5>
+                        <p class="text-muted small mb-2">На каждом дне — блоки «День» и «Ночь»: подпись и число по смене; клик открывает модальное окно для ввода данных.</p>
+                        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                            <a href="{{ url_for('project.dashboard', project_id=project.id, calendar_year=prev_year, calendar_month=prev_month) }}#project-people" class="btn btn-sm btn-outline-secondary">← {{ ('Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь')[prev_month - 1] }} {{ prev_year }}</a>
+                            <span class="fw-bold">{{ month_name_ru }} {{ calendar_year }}</span>
+                            <a href="{{ url_for('project.dashboard', project_id=project.id, calendar_year=next_year, calendar_month=next_month) }}#project-people" class="btn btn-sm btn-outline-secondary">{{ ('Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь')[next_month - 1] }} {{ next_year }} →</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm calendar-grid" style="table-layout: fixed; width: 100%;">
+                                <colgroup>
+                                    <col style="width: 14.28%"/><col style="width: 14.28%"/><col style="width: 14.28%"/><col style="width: 14.28%"/>
+                                    <col style="width: 14.28%"/><col style="width: 14.28%"/><col style="width: 14.28%"/>
+                                </colgroup>
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center">Пн</th><th class="text-center">Вт</th><th class="text-center">Ср</th><th class="text-center">Чт</th><th class="text-center">Пт</th><th class="text-center">Сб</th><th class="text-center">Вс</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in calendar_rows %}
+                                    <tr>
+                                        {% for cell in row %}
+                                        <td class="calendar-day p-2 {% if cell %}cell-has-data{% endif %}" style="height: 95px; vertical-align: top;">
+                                            {% if cell %}
+                                            <div class="day-cell-block">
+                                                <span class="d-block fw-bold">{{ cell.day }}</span>
+                                                <div class="shift-buttons-horizontal mt-1 d-flex gap-1">
+                                                    <button type="button" class="btn btn-outline-primary btn-sm shift-modal-btn flex-fill text-center py-2" data-date="{{ cell.date.isoformat() }}" data-shift="day" title="Дневная смена">
+                                                        <span class="d-block small fw-bold">День</span>
+                                                        <span class="d-block small opacity-75 mt-0">{% if cell.total_workers_day %}{{ cell.total_workers_day }} чел.{% else %}—{% endif %}</span>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm shift-modal-btn flex-fill text-center py-2" data-date="{{ cell.date.isoformat() }}" data-shift="night" title="Ночная смена">
+                                                        <span class="d-block small fw-bold">Ночь</span>
+                                                        <span class="d-block small opacity-75 mt-0">{% if cell.total_workers_night %}{{ cell.total_workers_night }} чел.{% else %}—{% endif %}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: добавить работу в график на уровне проекта -->
+<div class="modal fade" id="addProjectScheduleWorkModal" tabindex="-1" aria-labelledby="addProjectScheduleWorkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('project.add_schedule_work', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addProjectScheduleWorkModalLabel">Добавить работу в график объекта</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название работы<span class="text-danger">*</span></label>
+                        <textarea name="name" class="form-control" rows="2" required placeholder="Например: Устройство фундамента"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Плановая дата начала</label>
+                            <input type="date" name="planned_start" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Плановая дата окончания</label>
+                            <input type="date" name="planned_end" class="form-control">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Фактическая дата начала</label>
+                            <input type="date" name="fact_start" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Фактическая дата окончания</label>
+                            <input type="date" name="fact_end" class="form-control">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">% выполнения</label>
+                            <input type="number" name="percent_complete" class="form-control" min="0" max="100" step="0.1" placeholder="0–100">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Статус</label>
+                            <select name="status" class="form-select">
+                                <option value="">— не выбран —</option>
+                                <option value="Запланировано">Запланировано</option>
+                                <option value="В работе">В работе</option>
+                                <option value="Завершено">Завершено</option>
+                                <option value="Просрочено">Просрочено</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Корпус</label>
+                            <select name="building_id" id="schedule-building-select" class="form-select">
+                                <option value="">— Без привязки (объект целиком) —</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}">{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Этаж</label>
+                            <select name="floor_id" id="schedule-floor-select" class="form-select" disabled>
+                                <option value="">— Без этажа —</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Примечания</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Дополнительные детали по работе"></textarea>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Если корпус и этаж не выбраны, работа считается общей для всего объекта.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: добавить задачу в план (ГПП) -->
+<div class="modal fade" id="addPlanTaskModal" tabindex="-1" aria-labelledby="addPlanTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('project.add_plan_task', project_id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addPlanTaskModalLabel">Добавить задачу в план производства</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название задачи<span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required placeholder="Например: Подготовка площадки">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" name="start_date" class="form-control">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" name="end_date" class="form-control">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Тип (цвет)</label>
+                            <select name="task_type" class="form-select">
+                                <option value="">— не выбран —</option>
+                                <option value="Подготовка">Подготовка (синий)</option>
+                                <option value="Демонтаж">Демонтаж (оранжевый)</option>
+                                <option value="Монтаж">Монтаж (зелёный)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Зависимость от задачи</label>
+                            <select name="dependency_id" class="form-select">
+                                <option value="">— нет —</option>
+                                {% for t in plan_tasks or [] %}
+                                <option value="{{ t.id }}">{{ t.name or 'Задача ' ~ t.id }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Корпус</label>
+                            <select name="building_id" id="plan-task-building" class="form-select">
+                                <option value="">— не выбран —</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}">{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Этаж</label>
+                            <select name="floor_id" id="plan-task-floor" class="form-select" disabled>
+                                <option value="">— не выбран —</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Примечания</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Опционально">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить задачу</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: редактировать задачу ГПП -->
+<div class="modal fade" id="editPlanTaskModal" tabindex="-1" aria-labelledby="editPlanTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" id="editPlanTaskForm" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editPlanTaskModalLabel">Редактировать задачу</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название задачи</label>
+                        <input type="text" name="name" id="editPlanTaskName" class="form-control">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" name="start_date" id="editPlanTaskStart" class="form-control">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" name="end_date" id="editPlanTaskEnd" class="form-control">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Тип (цвет)</label>
+                            <select name="task_type" id="editPlanTaskType" class="form-select">
+                                <option value="">— не выбран —</option>
+                                <option value="Подготовка">Подготовка (синий)</option>
+                                <option value="Демонтаж">Демонтаж (оранжевый)</option>
+                                <option value="Монтаж">Монтаж (зелёный)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Зависимость от задачи</label>
+                            <select name="dependency_id" id="editPlanTaskDependency" class="form-select">
+                                <option value="">— нет —</option>
+                                {% for t in plan_tasks or [] %}
+                                <option value="{{ t.id }}">{{ t.name or 'Задача ' ~ t.id }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Корпус</label>
+                            <select name="building_id" id="editPlanTaskBuilding" class="form-select">
+                                <option value="">— не выбран —</option>
+                                {% for b in buildings %}
+                                <option value="{{ b.id }}">{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Этаж</label>
+                            <select name="floor_id" id="editPlanTaskFloor" class="form-select">
+                                <option value="">— не выбран —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Примечания</label>
+                        <input type="text" name="notes" id="editPlanTaskNotes" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: справочник исполнителей (список + добавление) -->
+<div class="modal fade" id="performersModal" tabindex="-1" aria-labelledby="performersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="performersModalLabel">Справочник исполнителей работ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{{ url_for('project.add_performer', project_id=project.id) }}" class="mb-4 p-3 bg-light rounded">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="calendar_month" value="{{ calendar_month }}"/>
+                    <input type="hidden" name="calendar_year" value="{{ calendar_year }}"/>
+                    <h6 class="mb-2">Добавить исполнителя</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <input type="text" name="name" class="form-control form-control-sm" placeholder="ФИО или название" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" name="company" class="form-control form-control-sm" placeholder="Организация">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Добавить</button>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <input type="text" name="notes" class="form-control form-control-sm" placeholder="Примечание (необязательно)">
+                    </div>
+                </form>
+                <h6 class="mb-2">Список</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light"><tr><th>Название</th><th>Организация</th><th class="text-end">Действия</th></tr></thead>
+                        <tbody>
+                            {% for p in work_performers or [] %}
+                            <tr>
+                                <td>{{ p.name or '—' }}</td>
+                                <td>{{ p.company or '—' }}</td>
+                                <td class="text-end">
+                                    <form action="{{ url_for('project.delete_performer', project_id=project.id, performer_id=p.id) }}" method="post" class="d-inline" onsubmit="return confirm('Удалить из справочника?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="calendar_month" value="{{ calendar_month }}"/>
+                                        <input type="hidden" name="calendar_year" value="{{ calendar_year }}"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-muted text-center py-3">Список пуст. Добавьте исполнителя выше.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Календарь: День слева, Ночь справа; в каждой кнопке подпись сверху, число снизу */
+    .shift-buttons-horizontal { display: flex; flex-direction: row; }
+    .shift-buttons-horizontal .shift-modal-btn { min-height: 3.2em; line-height: 1.25; flex: 1; }
+    /* Общая таблица смен: Чел/Часы по 6 символов, без стрелок number */
+    .shift-modal-table .shift-workers,
+    .shift-modal-table .shift-hours { width: 5.5em; max-width: 100%; box-sizing: border-box; }
+    .shift-modal-table input[type="number"] { -moz-appearance: textfield; }
+    .shift-modal-table input[type="number"]::-webkit-outer-spin-button,
+    .shift-modal-table input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .shift-modal-table thead th { white-space: nowrap; }
+    .shift-modal-table-wrap { max-height: 420px; overflow-y: auto; overflow-x: hidden; }
+    .shift-modal-table-wrap table { table-layout: fixed; width: 100%; }
+</style>
+<!-- Модалка: дневная смена -->
+<div class="modal fade" id="dayShiftModal" tabindex="-1" aria-labelledby="dayShiftModalLabel" aria-hidden="true">
+    <input type="hidden" id="dayShiftModalCsrf" value="{{ csrf_token() }}"/>
+    <div class="modal-dialog modal-xl" style="max-width: 1180px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dayShiftModalLabel">Данные за <span id="dayShiftModalDateText">—</span> — Дневная смена</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-0">
+                <p class="small text-muted px-3 pt-2 mb-0">Макс. 12 ч на смену.</p>
+                <div class="table-responsive shift-modal-table-wrap px-3 pb-2">
+                    <table class="table table-sm table-hover mb-0 shift-modal-table" id="dayShiftTable">
+                        <colgroup>
+                            <col style="width: 18%"/><col style="width: 18%"/><col style="width: 8%"/><col style="width: 8%"/><col style="width: 48%"/>
+                        </colgroup>
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Исполнитель</th><th>Организация</th><th class="text-end">Чел</th><th class="text-end">Часы</th><th>Примечания</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dayShiftModalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveDayShiftBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Модалка: ночная смена -->
+<div class="modal fade" id="nightShiftModal" tabindex="-1" aria-labelledby="nightShiftModalLabel" aria-hidden="true">
+    <input type="hidden" id="nightShiftModalCsrf" value="{{ csrf_token() }}"/>
+    <div class="modal-dialog modal-xl" style="max-width: 1180px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nightShiftModalLabel">Данные за <span id="nightShiftModalDateText">—</span> — Ночная смена</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-0">
+                <p class="small text-muted px-3 pt-2 mb-0">Макс. 12 ч на смену.</p>
+                <div class="table-responsive shift-modal-table-wrap px-3 pb-2">
+                    <table class="table table-sm table-hover mb-0 shift-modal-table" id="nightShiftTable">
+                        <colgroup>
+                            <col style="width: 18%"/><col style="width: 18%"/><col style="width: 8%"/><col style="width: 8%"/><col style="width: 48%"/>
+                        </colgroup>
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Исполнитель</th><th>Организация</th><th class="text-end">Чел</th><th class="text-end">Часы</th><th>Примечания</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nightShiftModalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveNightShiftBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var hash = window.location.hash;
+    if (hash) {
+        var tabEl = document.querySelector('.nav-link[href="' + hash + '"]');
+        if (tabEl) {
+            new bootstrap.Tab(tabEl).show();
+            var target = document.getElementById(hash.slice(1));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    var projectId = {{ project.id }};
+    var calendarMonth = {{ calendar_month }};
+    var calendarYear = {{ calendar_year }};
+
+    function formatDateRu(isoDate) {
+        var d = new Date(isoDate + 'T12:00:00');
+        var day = ('0' + d.getDate()).slice(-2), month = ('0' + (d.getMonth() + 1)).slice(-2), year = d.getFullYear();
+        return day + '.' + month + '.' + year;
+    }
+
+    function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    var currentShiftModalDate = null;
+    var currentShiftMode = null; // 'day' | 'night'
+
+    function buildRowsFromData(data, mode) {
+        var records = data.records || [];
+        var performers = data.performers || [];
+        var byName = {};
+        records.forEach(function (r) {
+            var k = (r.contractor_name || '').trim();
+            if (k) byName[k] = r;
+        });
+        var rows = [];
+        function addRow(name, org, rec, isHistorical) {
+            var dayH = Math.min(12, Math.max(0, parseFloat(rec.shift_hours) || 0));
+            var nightH = Math.min(12, Math.max(0, parseFloat(rec.shift_hours_night) || 0));
+            var workersDay = parseInt(rec.workers_count, 10) || 0;
+            var workersNight = parseInt(rec.workers_count_night, 10) || 0;
+            var notes = (rec.notes || '').trim();
+            if (mode === 'day') {
+                rows.push({
+                    name: name, org: org, isHistorical: isHistorical,
+                    workers: workersDay, otherWorkers: workersNight,
+                    hours: dayH, notes: notes, otherHours: nightH
+                });
+            } else {
+                rows.push({
+                    name: name, org: org, isHistorical: isHistorical,
+                    workers: workersNight, otherWorkers: workersDay,
+                    hours: nightH, notes: notes, otherHours: dayH
+                });
+            }
+        }
+        performers.forEach(function (p) {
+            var name = (p.name || '').trim();
+            if (!name) return;
+            var rec = byName[name] || { workers_count: 0, workers_count_night: 0, shift_hours: 0, shift_hours_night: 0, notes: '' };
+            addRow(name, p.organization || '', rec, false);
+        });
+        Object.keys(byName).forEach(function (name) {
+            if (performers.some(function (p) { return (p.name || '').trim() === name; })) return;
+            addRow(name, '', byName[name], true);
+        });
+        return rows;
+    }
+
+    function renderShiftTableBody(bodyEl, rows, mode) {
+        bodyEl.innerHTML = '';
+        rows.forEach(function (row) {
+            var tr = document.createElement('tr');
+            tr.dataset.contractorName = row.name;
+            tr.dataset.otherHours = String(row.otherHours);
+            tr.dataset.otherWorkers = String(row.otherWorkers !== undefined ? row.otherWorkers : 0);
+            var hist = row.isHistorical ? ' <span class="text-muted small">(исторический)</span>' : '';
+            tr.innerHTML =
+                '<td class="align-middle text-truncate" title="' + escapeHtml(row.name) + '">' + escapeHtml(row.name) + hist + '</td>' +
+                '<td class="align-middle text-truncate small">' + escapeHtml(row.org || '') + '</td>' +
+                '<td class="text-end p-1"><input type="number" class="form-control form-control-sm text-end shift-workers" min="0" value="' + row.workers + '" title="Кол-во человек"></td>' +
+                '<td class="text-end p-1"><input type="number" class="form-control form-control-sm text-end shift-hours" min="0" max="12" step="0.1" value="' + row.hours + '" title="Макс. 12 ч"></td>' +
+                '<td class="p-1"><input type="text" class="form-control form-control-sm shift-notes" value="' + escapeHtml(row.notes) + '" placeholder="—" style="width:100%;"></td>';
+            bodyEl.appendChild(tr);
+        });
+    }
+
+    function openShiftModal(dateStr, shift) {
+        currentShiftModalDate = dateStr;
+        currentShiftMode = shift;
+        var isDay = shift === 'day';
+        var modalId = isDay ? 'dayShiftModal' : 'nightShiftModal';
+        var dateTextId = isDay ? 'dayShiftModalDateText' : 'nightShiftModalDateText';
+        var bodyId = isDay ? 'dayShiftModalBody' : 'nightShiftModalBody';
+        document.getElementById(dateTextId).textContent = formatDateRu(dateStr);
+        var bodyEl = document.getElementById(bodyId);
+        bodyEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Загрузка…</td></tr>';
+        var modal = document.getElementById(modalId);
+        new bootstrap.Modal(modal).show();
+
+        fetch('/project/' + projectId + '/workforce/day/' + dateStr, { method: 'GET', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var rows = buildRowsFromData(data, shift);
+                renderShiftTableBody(bodyEl, rows, shift);
+            })
+            .catch(function () {
+                bodyEl.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Ошибка загрузки данных</td></tr>';
+            });
+    }
+
+    document.querySelectorAll('.shift-modal-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var dateVal = btn.getAttribute('data-date');
+            var shift = btn.getAttribute('data-shift');
+            if (!dateVal || !shift) return;
+            openShiftModal(dateVal, shift);
+        });
+    });
+
+    function collectRecordsAndSave(bodyId, shift, csrfElId, saveBtnId) {
+        if (!currentShiftModalDate || !currentShiftMode) return;
+        var bodyEl = document.getElementById(bodyId);
+        var rows = bodyEl.querySelectorAll('tr[data-contractor-name]');
+        if (!rows.length) rows = bodyEl.querySelectorAll('tr');
+        var records = [];
+        for (var i = 0; i < rows.length; i++) {
+            var tr = rows[i];
+            var name = (tr.dataset.contractorName || '').trim();
+            if (!name) continue;
+            var wInp = tr.querySelector('.shift-workers');
+            var hInp = tr.querySelector('.shift-hours');
+            var nInp = tr.querySelector('.shift-notes');
+            var workers = 0;
+            if (wInp && wInp.value !== '') { var w = parseInt(wInp.value, 10); if (!isNaN(w) && w >= 0) workers = w; }
+            var hours = 0;
+            if (hInp && hInp.value !== '') { var h = parseFloat(hInp.value); if (!isNaN(h) && h >= 0) hours = Math.min(12, h); }
+            var otherHours = parseFloat(tr.dataset.otherHours || '0') || 0;
+            var otherWorkers = parseInt(tr.dataset.otherWorkers || '0', 10) || 0;
+            var notes = (nInp && nInp.value) ? nInp.value.trim() : '';
+            if (currentShiftMode === 'day') {
+                records.push({ contractor_name: name, workers_count: workers, workers_count_night: otherWorkers, shift_hours: hours, shift_hours_night: otherHours, notes: notes });
+            } else {
+                records.push({ contractor_name: name, workers_count: otherWorkers, workers_count_night: workers, shift_hours: otherHours, shift_hours_night: hours, notes: notes });
+            }
+        }
+        var csrf = (document.getElementById(csrfElId) || {}).value || '';
+        var btn = document.getElementById(saveBtnId);
+        if (!btn) return;
+        btn.disabled = true;
+        function goToDashboard() {
+            window.location.replace('/project/' + projectId + '/dashboard?calendar_month=' + calendarMonth + '&calendar_year=' + calendarYear + '&_=' + Date.now() + '#project-people');
+        }
+        fetch('/project/' + projectId + '/workforce/day/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify({ date: currentShiftModalDate, records: records, month: calendarMonth, year: calendarYear })
+        }).then(function (r) {
+            if (r.redirected || r.ok) { goToDashboard(); return null; }
+            return r.json().catch(function () { return {}; });
+        }).then(function (data) {
+            if (data === null) return;
+            btn.disabled = false;
+            if (data && data.error) alert(data.error || 'Ошибка сохранения');
+            else goToDashboard();
+        }).catch(function () { btn.disabled = false; goToDashboard(); });
+    }
+
+    document.getElementById('saveDayShiftBtn').addEventListener('click', function () {
+        collectRecordsAndSave('dayShiftModalBody', 'day', 'dayShiftModalCsrf', 'saveDayShiftBtn');
+    });
+    document.getElementById('saveNightShiftBtn').addEventListener('click', function () {
+        collectRecordsAndSave('nightShiftModalBody', 'night', 'nightShiftModalCsrf', 'saveNightShiftBtn');
+    });
+
+    // Этажи проекта сгруппированы по корпусу (для фильтров и модалки загрузки)
+    var floorsByBuilding = {};
+    {% for f in project_floors or [] %}
+    if (!floorsByBuilding[{{ f.building_id }}]) { floorsByBuilding[{{ f.building_id }}] = []; }
+    floorsByBuilding[{{ f.building_id }}].push({id: {{ f.id }}, name: "{{ f.building.name|e }} — {{ f.name|e }}"});
+    {% endfor %}
+
+    function setupCascadingFilter(buildingSelectId, floorSelectId, selectedFloorId) {
+        var bSel = document.getElementById(buildingSelectId);
+        var fSel = document.getElementById(floorSelectId);
+        if (!bSel || !fSel) return;
+
+        function fillFloors() {
+            var bId = bSel.value;
+            fSel.innerHTML = '';
+            if (!bId) {
+                fSel.disabled = true;
+                fSel.appendChild(new Option('Все этажи', ''));
+                return;
+            }
+            fSel.disabled = false;
+            fSel.appendChild(new Option('Все этажи', ''));
+            var list = floorsByBuilding[bId] || [];
+            list.forEach(function (f) {
+                var opt = new Option(f.name, f.id);
+                if (String(f.id) === selectedFloorId) {
+                    opt.selected = true;
+                }
+                fSel.appendChild(opt);
+            });
+        }
+
+        fillFloors();
+        bSel.addEventListener('change', function () {
+            selectedFloorId = '';
+            fillFloors();
+        });
+    }
+
+    // Каскадные фильтры для «Фото и видео», «Документы» и «Графики»
+    setupCascadingFilter('media-building-filter', 'media-floor-filter', '{{ request.args.get("floor_id") or "" }}');
+    setupCascadingFilter('docs-building-filter', 'docs-floor-filter', '{{ request.args.get("floor_id") or "" }}');
+    setupCascadingFilter('graphs-building-filter', 'graphs-floor-filter', '{{ graphs_floor_id or "" }}');
+
+    // Модалка загрузки файлов на уровне объекта
+    var uploadForm = document.querySelector('#uploadModal form');
+    if (uploadForm) {
+        var pathParts = window.location.pathname.split('/');
+        var projectIdIndex = pathParts.indexOf('project') + 1;
+        if (projectIdIndex > 0 && pathParts[projectIdIndex]) {
+            uploadForm.action = '/project/' + pathParts[projectIdIndex] + '/upload_documents';
+        }
+        var buildingSelect = uploadForm.querySelector('select[name="building_id"]');
+        var floorSelect = uploadForm.querySelector('select[name="floor_id"]');
+
+        // Корпуса для объекта
+        if (buildingSelect) {
+            buildingSelect.innerHTML = '<option value="">Общие для объекта</option>';
+            {% for building in buildings %}
+            buildingSelect.innerHTML += '<option value="{{ building.id }}">{{ building.name }}</option>';
+            {% endfor %}
+        }
+
+        function updateFloorOptions() {
+            if (!floorSelect) return;
+            var bId = buildingSelect && buildingSelect.value ? buildingSelect.value : null;
+            floorSelect.innerHTML = '';
+            var baseOption = document.createElement('option');
+            baseOption.value = '';
+            baseOption.textContent = bId ? 'Общие для выбранного корпуса' : 'Общие для объекта';
+            floorSelect.appendChild(baseOption);
+            if (bId && floorsByBuilding[bId]) {
+                floorsByBuilding[bId].forEach(function (f) {
+                    var opt = document.createElement('option');
+                    opt.value = String(f.id);
+                    opt.textContent = f.name;
+                    floorSelect.appendChild(opt);
+                });
+            }
+        }
+
+        if (buildingSelect && floorSelect) {
+            buildingSelect.addEventListener('change', updateFloorOptions);
+            updateFloorOptions();
+        }
+    }
+
+    // Каскадный выбор корпуса/этажа в модалке добавления работы в график объекта
+    (function () {
+        var bSel = document.getElementById('schedule-building-select');
+        var fSel = document.getElementById('schedule-floor-select');
+        if (!bSel || !fSel) return;
+        function fillScheduleFloors() {
+            var bId = bSel.value;
+            fSel.innerHTML = '';
+            var baseOption = new Option('— Без этажа —', '');
+            fSel.appendChild(baseOption);
+            if (!bId) {
+                fSel.disabled = true;
+                return;
+            }
+            fSel.disabled = false;
+            var list = floorsByBuilding[bId] || [];
+            list.forEach(function (f) {
+                fSel.appendChild(new Option(f.name, f.id));
+            });
+        }
+        bSel.addEventListener('change', fillScheduleFloors);
+        fillScheduleFloors();
+    })();
+
+    // Каскад корпус/этаж в модалке «Добавить задачу» (ГПП)
+    (function () {
+        var bSel = document.getElementById('plan-task-building');
+        var fSel = document.getElementById('plan-task-floor');
+        if (!bSel || !fSel) return;
+        function fillPlanFloors() {
+            fSel.innerHTML = '<option value="">— не выбран —</option>';
+            var bId = bSel.value;
+            if (!bId) { fSel.disabled = true; return; }
+            fSel.disabled = false;
+            var list = floorsByBuilding[bId] || [];
+            list.forEach(function (f) {
+                fSel.appendChild(new Option(f.name, f.id));
+            });
+        }
+        bSel.addEventListener('change', fillPlanFloors);
+        fillPlanFloors();
+    })();
+
+    // Модалка редактирования задачи ГПП: подставить данные в форму
+    var editPlanTaskModal = document.getElementById('editPlanTaskModal');
+    if (editPlanTaskModal) {
+        editPlanTaskModal.addEventListener('show.bs.modal', function (e) {
+            var btn = e.relatedTarget;
+            if (!btn) return;
+            var taskId = btn.getAttribute('data-task-id');
+            var form = document.getElementById('editPlanTaskForm');
+            if (!form || !taskId) return;
+            form.action = '/project/{{ project.id }}/plan/' + taskId + '/edit';
+            document.getElementById('editPlanTaskName').value = btn.getAttribute('data-task-name') || '';
+            document.getElementById('editPlanTaskStart').value = btn.getAttribute('data-task-start') || '';
+            document.getElementById('editPlanTaskEnd').value = btn.getAttribute('data-task-end') || '';
+            document.getElementById('editPlanTaskType').value = btn.getAttribute('data-task-type') || '';
+            document.getElementById('editPlanTaskDependency').value = btn.getAttribute('data-task-dependency') || '';
+            document.getElementById('editPlanTaskNotes').value = btn.getAttribute('data-task-notes') || '';
+            var buildingId = btn.getAttribute('data-task-building') || '';
+            var floorId = btn.getAttribute('data-task-floor') || '';
+            var editBuilding = document.getElementById('editPlanTaskBuilding');
+            var editFloor = document.getElementById('editPlanTaskFloor');
+            if (editBuilding) editBuilding.value = buildingId;
+            if (editFloor) {
+                editFloor.innerHTML = '<option value="">— не выбран —</option>';
+                if (buildingId && floorsByBuilding[buildingId]) {
+                    editFloor.disabled = false;
+                    floorsByBuilding[buildingId].forEach(function (f) {
+                        var opt = new Option(f.name, f.id);
+                        if (String(f.id) === floorId) opt.selected = true;
+                        editFloor.appendChild(opt);
+                    });
+                } else {
+                    editFloor.disabled = true;
+                }
+            }
+        });
+    }
+
+    // Mermaid Gantt: инициализация и масштаб
+    (function () {
+        var wrapper = document.querySelector('.gantt-wrapper');
+        if (!wrapper) return;
+        var diagram = wrapper.querySelector('.gantt-diagram');
+        if (!diagram || !window.mermaid) return;
+        mermaid.initialize({ startOnLoad: false, theme: 'base', gantt: { axisFormat: '%d.%m' } });
+        mermaid.run({ nodes: [diagram] }).catch(function (err) { console.warn('Mermaid Gantt:', err); });
+
+        var scale = 1;
+        function applyZoom() {
+            wrapper.style.transform = 'scale(' + scale + ')';
+            wrapper.style.transformOrigin = 'top left';
+        }
+        document.getElementById('ganttZoomIn') && document.getElementById('ganttZoomIn').addEventListener('click', function () {
+            scale = Math.min(scale + 0.15, 2.5);
+            applyZoom();
+        });
+        document.getElementById('ganttZoomOut') && document.getElementById('ganttZoomOut').addEventListener('click', function () {
+            scale = Math.max(scale - 0.15, 0.5);
+            applyZoom();
+        });
+        document.getElementById('ganttZoomReset') && document.getElementById('ganttZoomReset').addEventListener('click', function () {
+            scale = 1;
+            applyZoom();
+        });
+    })();
+
+    window.openFolder = function(stored_path) {
+        alert('Открытие папки в проводнике доступно только в локальной сети.');
+    };
+});
+</script>
+
+{% endblock %}

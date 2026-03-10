@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Загрузить сертификат / паспорт качества</h2>
+    <p class="text-muted">Этаж: {{ floor.name }}</p>
+    <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#tech" class="btn btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Назад к этажу
+    </a>
+
+    <div class="card p-4" style="max-width: 500px;">
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="return_to" value="{{ return_to }}"/>
+            {% if material_id %}<input type="hidden" name="material_id" value="{{ material_id }}"/>{% endif %}
+            {% if equipment_id %}<input type="hidden" name="equipment_id" value="{{ equipment_id }}"/>{% endif %}
+            <div class="mb-3">
+                <label class="form-label">Файл (PDF, изображение)</label>
+                <input type="file" name="file" class="form-control" required accept=".pdf,image/*"/>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Название (необязательно)</label>
+                <input type="text" name="title" class="form-control" placeholder="Сертификат, паспорт качества…"/>
+            </div>
+            <button type="submit" class="btn btn-primary">Загрузить</button>
+            <a href="{{ url_for('floors.view_floor', floor_id=floor.id) }}#tech" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

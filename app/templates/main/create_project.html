@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="fw-bold mb-4">Создать новый объект</h2>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Название объекта *</label>
+                        {{ form.name(class="form-control form-control-lg") }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Номер договора</label>
+                        {{ form.contract_number(class="form-control") }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Адрес объекта</label>
+                        {{ form.address(class="form-control") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Вид строительства / работ</label>
+                        {{ form.type_construction(class="form-control") }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Дата начала</label>
+                        {{ form.start_date(class="form-control", type="date") }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Плановая дата окончания</label>
+                        {{ form.end_date(class="form-control", type="date") }}
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-plus-lg"></i> Создать объект</button>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary btn-lg ms-3">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

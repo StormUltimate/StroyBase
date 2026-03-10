@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Админка — Корпуса{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1">Корпуса</h2>
+            <p class="text-muted mb-0">Все корпуса в системе. Удаление лишних — только вручную через кнопку «Удалить» с выбором: полное удаление или переназначение связей на другой корпус.</p>
+        </div>
+        <form action="{{ url_for('admin.reset_all_works') }}" method="post" onsubmit="return confirm('Очистить ВСЕ работы и ежедневное выполнение по всем объектам? Это действие невозможно отменить. Продолжить?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-exclamation-triangle me-2"></i>Очистить объёмы работ
+            </button>
+        </form>
+    </div>
+
+    {% if projects_with_many_buildings %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>Обнаружено много корпусов</strong> у одного или нескольких проектов — проверьте список на дубликаты и при необходимости удалите лишние.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <input type="text" id="filterBuildings" class="form-control" placeholder="Поиск по проекту, названию, примечанию..." aria-label="Поиск">
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle" id="buildingsTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Проект</th>
+                    <th>Название</th>
+                    <th>Этажей</th>
+                    <th>Движений материалов</th>
+                    <th>Дата создания</th>
+                    <th>Примечание</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr data-project="{{ row.project.name if row.project else '' }}" data-name="{{ row.building.name }}" data-note="{{ row.building.note or '' }}">
+                    <td>{{ row.project.name if row.project else '—' }}</td>
+                    <td>{{ row.building.name }}</td>
+                    <td>{{ row.floors_count }}</td>
+                    <td>{{ row.movements_count }}</td>
+                    <td>{{ row.building.created_at.strftime('%d.%m.%Y') if row.building.created_at else '—' }}</td>
+                    <td class="text-muted small">{{ (row.building.note or '')[:50] }}{% if row.building.note and row.building.note|length > 50 %}…{% endif %}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteBuildingModal"
+                                data-building-id="{{ row.building.id }}"
+                                data-building-name="{{ row.building.name }}"
+                                data-project-id="{{ row.building.project_id }}"
+                                data-floors-count="{{ row.floors_count }}"
+                                data-movements-count="{{ row.movements_count }}"
+                                data-same-project="{{ row.same_project_ids|tojson }}"
+                                data-same-project-names="{{ row.same_project_names|tojson }}">
+                            Удалить
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not rows %}
+    <p class="text-muted">Нет корпусов.</p>
+    {% endif %}
+</div>
+
+<!-- Модальное окно: удаление корпуса -->
+<div class="modal fade" id="deleteBuildingModal" tabindex="-1" aria-labelledby="deleteBuildingModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteBuildingModalLabel">Удаление корпуса</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Корпус: <strong id="modalBuildingName"></strong></p>
+                <p class="text-muted small mb-3">Будут затронуты: этажи (<span id="modalFloorsCount">0</span>), записи движения материалов (<span id="modalMovementsCount">0</span>), документы, работы в графике и участники корпуса.</p>
+                <div class="alert alert-warning small">
+                    Выберите один из вариантов: удалить корпус полностью (этажи и данные по нему будут удалены) или переназначить все связи на другой корпус того же проекта.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Переназначить на другой корпус</label>
+                    <select class="form-select" id="reassignTargetSelect">
+                        <option value="">— не переназначать —</option>
+                    </select>
+                    <small class="form-text text-muted">Если выбран корпус — все этажи и связи перейдут на него, затем текущий корпус будет удалён.</small>
+                </div>
+
+                <hr>
+                <p class="mb-0 small text-muted">Полное удаление: обнуляются привязки документов/движений к корпусу, этажи и сам корпус удаляются.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="post" action="" id="formDelete" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">Удалить полностью</button>
+                </form>
+                <form method="post" action="" id="formReassign" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="target_building_id" id="inputTargetId" value=""/>
+                    <button type="submit" class="btn btn-primary" id="btnReassign">Переназначить на выбранный корпус</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const modal = document.getElementById('deleteBuildingModal');
+    if (!modal) return;
+
+    const modalBuildingName = document.getElementById('modalBuildingName');
+    const modalFloorsCount = document.getElementById('modalFloorsCount');
+    const modalMovementsCount = document.getElementById('modalMovementsCount');
+    const reassignTargetSelect = document.getElementById('reassignTargetSelect');
+    const formDelete = document.getElementById('formDelete');
+    const formReassign = document.getElementById('formReassign');
+    const inputTargetId = document.getElementById('inputTargetId');
+    const btnReassign = document.getElementById('btnReassign');
+
+    modal.addEventListener('show.bs.modal', function(event) {
+        const btn = event.relatedTarget;
+        if (!btn) return;
+        const buildingId = btn.dataset.buildingId;
+        const buildingName = btn.dataset.buildingName || '';
+        const floorsCount = btn.dataset.floorsCount || '0';
+        const movementsCount = btn.dataset.movementsCount || '0';
+        let sameIds = [];
+        let sameNames = [];
+        try {
+            sameIds = JSON.parse(btn.dataset.sameProject || '[]');
+            sameNames = JSON.parse(btn.dataset.sameProjectNames || '[]');
+        } catch (e) {}
+
+        modalBuildingName.textContent = buildingName;
+        modalFloorsCount.textContent = floorsCount;
+        modalMovementsCount.textContent = movementsCount;
+
+        reassignTargetSelect.innerHTML = '<option value="">— не переназначать —</option>';
+        sameIds.forEach(function(id, i) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = sameNames[i] || 'Корпус ' + id;
+            reassignTargetSelect.appendChild(opt);
+        });
+
+        const deleteUrl = "{{ url_for('admin.building_delete', building_id=0) }}".replace('/0/', '/' + buildingId + '/');
+        const reassignUrl = "{{ url_for('admin.building_reassign', building_id=0) }}".replace('/0/', '/' + buildingId + '/');
+        formDelete.action = deleteUrl;
+        formReassign.action = reassignUrl;
+    });
+
+    formReassign.addEventListener('submit', function(e) {
+        const val = reassignTargetSelect.value;
+        if (!val) {
+            e.preventDefault();
+            alert('Выберите корпус для переназначения.');
+            return;
+        }
+        inputTargetId.value = val;
+    });
+
+    btnReassign.addEventListener('click', function(e) {
+        if (!reassignTargetSelect.value) {
+            e.preventDefault();
+            alert('Выберите корпус для переназначения.');
+        }
+    });
+
+    // Поиск по таблице
+    const filterInput = document.getElementById('filterBuildings');
+    const table = document.getElementById('buildingsTable');
+    if (filterInput && table) {
+        filterInput.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            tbody.querySelectorAll('tr').forEach(function(tr) {
+                const project = (tr.dataset.project || '').toLowerCase();
+                const name = (tr.dataset.name || '').toLowerCase();
+                const note = (tr.dataset.note || '').toLowerCase();
+                const show = !q || project.includes(q) || name.includes(q) || note.includes(q);
+                tr.style.display = show ? '' : 'none';
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

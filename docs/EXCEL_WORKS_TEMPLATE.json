@@ -1,0 +1,29 @@
+{
+  "_comment": "Шаблон строк для импорта work1.xlsx. Вы можете изменить номера строк и названия разделов/подразделов под ваш фактический файл.",
+  "_comment_structure": "Каждый объект в массиве row_rules описывает ОДНУ строку Excel (row — номер строки, начиная с 1). type: 'category' — строка-заголовок раздела; 'subsection' — строка-заголовок подраздела инженерных систем; 'skip' — строку полностью игнорировать при импорте, даже если там есть объём.",
+  "row_rules": [
+    { "row": 31, "type": "category",  "category": "Демонтажные работы" },
+
+    { "row": 39, "type": "skip" },
+
+    { "row": 40, "type": "category",  "category": "Общестроительные работы" },
+    { "row": 41, "type": "skip" },
+    { "row": 51, "type": "skip" },
+
+    { "row": 52, "type": "category",  "category": "Инженерные системы" },
+    { "row": 53, "type": "skip" },
+
+    { "row": 54, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы вентиляции" },
+    { "row": 59, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы кондиционирования" },
+    { "row": 64, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы электроснабжения" },
+    { "row": 73, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы водоснабжения, водоотведения" },
+    { "row": 82, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы отопления" },
+    { "row": 86, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы видеонаблюдения" },
+    { "row": 91, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство СКУД" },
+    { "row": 96, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство охранной сигнализации" },
+    { "row": 101, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство СКС,ЛВС" },
+    { "row": 107, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство часофикации" },
+    { "row": 112, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы пожарной сигнализации" },
+    { "row": 117, "type": "subsection", "category": "Инженерные системы", "subsection": "Устройство системы оповещения" }
+  ]
+}

@@ -1,0 +1,57 @@
+{# StroyBase: общий шаблон просмотра объекта (корпус / этаж) #}
+{# Одна колонка: верхняя панель (назад, загрузка, редактирование/удаление), заголовок, вкладки, контент, опционально секция после вкладок #}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-0 sb-object-view">
+    <div class="row" style="min-height: 100vh;">
+        <div class="col-12 p-3 p-md-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    {% block back_button %}{% endblock %}
+                    {% block upload_button %}
+                    <button type="button" class="btn btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#uploadModal"
+                            aria-label="Загрузить фото и документы">
+                        <i class="bi bi-upload me-2"></i>Загрузить фото/документы
+                    </button>
+                    {% endblock %}
+                    {% block object_actions %}{% endblock %}
+                </div>
+            </div>
+
+            <h3 class="mb-2">{% block page_title %}{% endblock %}</h3>
+            {% block object_header %}{% endblock %}
+            {% block object_banner %}{% endblock %}
+            {% block filter_panel %}{% endblock %}
+
+            <ul class="nav nav-tabs mb-4">
+                {% block tabs %}{% endblock %}
+            </ul>
+
+            <div class="tab-content">
+                {% block tab_content %}{% endblock %}
+            </div>
+
+            {% block content_after_tabs %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+{% block modals %}{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function activateTabFromHash() {
+        if (!window.location.hash) return;
+        var tabEl = document.querySelector('.nav-link[href="' + window.location.hash + '"]');
+        if (tabEl) {
+            new bootstrap.Tab(tabEl).show();
+        }
+    }
+    activateTabFromHash();
+    window.addEventListener('hashchange', activateTabFromHash);
+});
+</script>
+{% endblock %}

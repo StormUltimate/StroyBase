@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-box-seam me-2 text-primary"></i>
+                Склад материалов по объекту
+            </h2>
+            <small class="text-muted">
+                Приход материалов на объект, расход по корпусам и этажам, остаток и оценка в деньгах
+            </small>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-header bg-light border-bottom py-3">
+            <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Выбор проекта</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4 col-sm-6">
+                    <label class="form-label small fw-semibold">Проект</label>
+                    <select name="project_id" class="form-select form-select-sm" required>
+                        <option value="">Выберите проект</option>
+                        {% for p in projects_display %}
+                        <option value="{{ p[0] }}" {% if current_project_id == p[0] %}selected{% endif %}>{{ p[1]|truncate(40) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-arrow-repeat me-1"></i> Показать склад
+                    </button>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <a href="{{ url_for('movement.index', project_id=current_project_id or '') }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-list-ul me-1"></i> Все движения
+                    </a>
+                </div>
+            </form>
+            {% if error_message %}
+            <div class="alert alert-warning mt-3 mb-0 small">
+                {{ error_message }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if current_project_id %}
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+            <h6 class="mb-0">
+                <i class="bi bi-graph-up-arrow me-2"></i>
+                Остатки по материалам на складе объекта
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered table-sm mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Материал</th>
+                            <th>Бренд</th>
+                            <th>Ед.</th>
+                            <th class="text-end">Приход на объект</th>
+                            <th class="text-end">Выдано на корпуса/этажи</th>
+                            <th class="text-end">Остаток на складе</th>
+                            <th class="text-end">Цена за ед., ₽</th>
+                            <th class="text-end">Остаток, ₽</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in stock_rows %}
+                        <tr>
+                            <td>{{ row.material_name or '—' }}</td>
+                            <td>{{ row.brand or '—' }}</td>
+                            <td>{{ row.unit or '—' }}</td>
+                            <td class="text-end">
+                                {{ row.incoming_qty|float|round(2) if row.incoming_qty is not none else '—' }}
+                            </td>
+                            <td class="text-end">
+                                {{ row.out_qty|float|round(2) if row.out_qty is not none else '—' }}
+                            </td>
+                            <td class="text-end">
+                                {% if row.stock_qty is not none %}
+                                    {% if row.stock_qty < 0 %}
+                                        <span class="text-danger fw-semibold">{{ row.stock_qty|float|round(2) }}</span>
+                                    {% else %}
+                                        {{ row.stock_qty|float|round(2) }}
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {{ row.price_per_unit|float|round(2) if row.price_per_unit is not none else '—' }}
+                            </td>
+                            <td class="text-end">
+                                {% if row.stock_cost is not none %}
+                                    {{ row.stock_cost|float|round(2) }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                Для выбранного проекта нет записей по приходам/расходам на склад объекта.
+                                Добавьте движения материалов или измените проект.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

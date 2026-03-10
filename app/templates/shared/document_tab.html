@@ -1,0 +1,196 @@
+{# StroyBase: переиспользуемая вкладка документов (Документы / ПД / РД / ИД / Договора) #}
+{# Ожидает в контексте: document_tab_tab_type, document_tab_docs, document_tab_anchor, building, floors, doc_types #}
+{# Для Договора: document_tab_contract_doc_type_id (опционально) #}
+{% set _tab_type = document_tab_tab_type|default('Документы') %}
+{% set _docs = document_tab_docs|default([]) %}
+{% set _anchor = document_tab_anchor|default('docs') %}
+{% set _view_url = url_for('buildings.view_building', building_id=building.id) %}
+{% set _is_contract = (_tab_type == 'Договора') %}
+
+<h4 class="mb-3">{{ _tab_type }} корпуса</h4>
+
+{% if _is_contract %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <span></span>
+    <button type="button" class="btn btn-primary btn-sm" id="btnAddContract" data-bs-toggle="modal" data-bs-target="#uploadModal" data-doc-type-id="{{ document_tab_contract_doc_type_id|default('') }}">
+        <i class="bi bi-plus-lg me-1"></i>Добавить договор
+    </button>
+</div>
+{% endif %}
+
+{% if _is_contract %}
+{# Фильтры вкладки «Договора» #}
+<form method="get" action="{{ _view_url }}#{{ _anchor }}" class="row g-2 mb-4 p-3 bg-light rounded">
+    <input type="hidden" name="floor_id" value="{{ request.args.get('floor_id') or '' }}">
+    <input type="hidden" name="doc_type_id" value="{{ request.args.get('doc_type_id') or '' }}">
+    <div class="col-md-2">
+        <label class="form-label small">Дата договора от</label>
+        <input type="date" name="contract_date_from" class="form-control form-control-sm" value="{{ request.args.get('contract_date_from') or '' }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">Дата договора до</label>
+        <input type="date" name="contract_date_to" class="form-control form-control-sm" value="{{ request.args.get('contract_date_to') or '' }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Поиск (номер, контрагент)</label>
+        <input type="text" name="contract_search" class="form-control form-control-sm" value="{{ request.args.get('contract_search') or '' }}" placeholder="Номер или контрагент">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary btn-sm me-1">Применить фильтры</button>
+        <a href="{{ _view_url }}#{{ _anchor }}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+    </div>
+</form>
+{% else %}
+{# Фильтры вкладки «Документы» / ПД / РД / ИД #}
+<form method="get" action="{{ _view_url }}#{{ _anchor }}" class="row g-2 mb-4 p-3 bg-light rounded">
+    <div class="col-md-2">
+        <label class="form-label small">Этаж</label>
+        <select name="floor_id" class="form-select form-select-sm">
+            <option value="">Все этажи</option>
+            {% for floor in floors %}
+            <option value="{{ floor.id }}" {% if request.args.get('floor_id') == (floor.id|string) %}selected{% endif %}>{{ floor.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">Вид документа</label>
+        <select name="doc_type_id" class="form-select form-select-sm">
+            <option value="">Все виды</option>
+            {% for dt in doc_types %}
+            <option value="{{ dt.id }}" {% if request.args.get('doc_type_id') == (dt.id|string) %}selected{% endif %}>{{ dt.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">Дата от</label>
+        <input type="date" name="from_date" class="form-control form-control-sm" value="{{ request.args.get('from_date') or '' }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">Дата до</label>
+        <input type="date" name="to_date" class="form-control form-control-sm" value="{{ request.args.get('to_date') or '' }}">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary btn-sm me-1">Применить фильтры</button>
+        <a href="{{ _view_url }}#{{ _anchor }}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+    </div>
+</form>
+{% endif %}
+
+<div class="table-responsive">
+{% if _is_contract %}
+    <table class="table table-hover align-middle sb-doc-table" id="contractsTable">
+        <thead class="table-light">
+            <tr>
+                <th>Номер договора</th>
+                <th>Дата заключения</th>
+                <th>Контрагент</th>
+                <th class="text-end">Сумма</th>
+                <th>Статус</th>
+                <th>Файл</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in _docs or [] %}
+            <tr>
+                <td class="align-middle">{{ doc.contract_number or doc.title or '—' }}</td>
+                <td class="align-middle">{{ doc.contract_date.strftime('%d.%m.%Y') if doc.contract_date else '—' }}</td>
+                <td class="align-middle">{{ doc.counterparty or '—' }}</td>
+                <td class="text-end align-middle">{{ (doc.amount|round(2)) if doc.amount is not none else '—' }}</td>
+                <td class="align-middle">{{ doc.contract_status or '—' }}</td>
+                <td class="align-middle">
+                    {% if doc.filename %}
+                    <a href="{{ url_for('buildings.view_document', doc_id=doc.id) }}" target="_blank" rel="noopener noreferrer" class="text-primary text-decoration-none">
+                        {{ doc.filename }} <i class="bi bi-box-arrow-up-right small"></i>
+                    </a>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="align-middle">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('buildings.view_document', doc_id=doc.id, download=1) }}"
+                           class="btn btn-outline-secondary"
+                           title="Сохранить на ПК"
+                           onclick="event.stopPropagation();">
+                            <i class="bi bi-download"></i>
+                        </a>
+                        <form action="{{ url_for('buildings.delete_document', doc_id=doc.id) }}" method="POST" style="display:inline;"
+                              onsubmit="return confirm('Удалить договор из списка? Файл на диске останется.');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                    {% if document_tab_contract_doc_type_id %}
+                    Нет договоров по заданным фильтрам. Загрузите документ с видом «Договор» и нажмите «Добавить договор».
+                    {% else %}
+                    Добавьте вид документа «Договор» в справочник видов работ (doc_types), затем загрузите договор через «Добавить договор».
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <table class="table table-hover align-middle sb-doc-table" id="documentsTable">
+        <thead class="table-light">
+            <tr>
+                <th>Название</th>
+                <th style="min-width: 380px; width: 45%;">Имя файла</th>
+                <th>Формат</th>
+                <th>Вид документа</th>
+                <th>Дата</th>
+                <th class="text-end small text-muted">Размер, КБ</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in _docs %}
+            <tr data-doc-url="{{ url_for('buildings.view_document', doc_id=doc.id) }}" class="sb-doc-row">
+                <td class="align-middle">{{ doc.title or '—' }}</td>
+                <td class="align-middle filename-cell">
+                    <a href="{{ url_for('buildings.view_document', doc_id=doc.id) }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="text-primary text-decoration-none d-flex align-items-center gap-2"
+                       title="Открыть / скачать в новой вкладке">
+                        <strong>{{ doc.filename }}</strong>
+                        <i class="bi bi-box-arrow-up-right small text-muted"></i>
+                    </a>
+                </td>
+                <td class="align-middle">{{ doc.filename.split('.')[-1]|upper if doc.filename else '—' }}</td>
+                <td class="align-middle">{{ doc.work_types|map(attribute='name')|join(', ') or '—' }}</td>
+                <td class="align-middle">{{ doc.uploaded_at.strftime('%d.%m.%Y') if doc.uploaded_at else '—' }}</td>
+                <td class="text-end small text-muted align-middle">{{ (doc.file_size // 1024)|int if doc.file_size else '—' }}</td>
+                <td class="align-middle">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('buildings.view_document', doc_id=doc.id, download=1) }}"
+                           class="btn btn-outline-secondary"
+                           title="Сохранить на ПК"
+                           onclick="event.stopPropagation();">
+                            <i class="bi bi-download"></i>
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary"
+                                onclick="event.stopPropagation(); window.location.href='{{ url_for('project.edit_document', doc_id=doc.id) }}';">
+                            Ред.
+                        </button>
+                        <form action="{{ url_for('buildings.delete_document', doc_id=doc.id) }}" method="POST" style="display:inline;"
+                              onsubmit="return confirm('Удалить документ «{{ doc.filename }}»? Файл на диске останется.');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-outline-danger" onclick="event.stopPropagation();"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-5">Нет документов по заданным фильтрам</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Удаление объекта</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Будет удалён объект <strong>«{{ project.name }}»</strong> и все связанные с ним данные. Действие необратимо.</p>
+                    <div class="alert alert-warning mb-4">
+                        <strong>Будет удалено:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Корпусов: <strong>{{ impact.buildings }}</strong></li>
+                            <li>Этажей: <strong>{{ impact.floors }}</strong></li>
+                            <li>Документов: <strong>{{ impact.documents }}</strong></li>
+                            <li>Записей о движении материалов: <strong>{{ impact.movements }}</strong></li>
+                            <li>Записей в графиках работ: <strong>{{ impact.schedule_works }}</strong></li>
+                        </ul>
+                        <p class="mb-0 mt-2 small">Также удаляются: участники корпусов, работы в графике, учёт людей по дням, исполнители работ, файлы в каталоге проекта.</p>
+                    </div>
+                    <form method="post" action="{{ url_for('main.delete_project', project_id=project.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" name="confirm" id="confirmDelete" value="yes" required>
+                            <label class="form-check-label text-danger fw-semibold" for="confirmDelete">
+                                Да, удалить объект и все перечисленные данные
+                            </label>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger" id="btnSubmit" disabled>
+                                <i class="bi bi-trash me-1"></i> Удалить проект
+                            </button>
+                            <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('confirmDelete').addEventListener('change', function() {
+    document.getElementById('btnSubmit').disabled = !this.checked;
+});
+</script>
+{% endblock %}

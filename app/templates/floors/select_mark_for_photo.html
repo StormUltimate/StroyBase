@@ -1,0 +1,135 @@
+<!-- StroyBase: выбор точки на плане для фото -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <a href="{{ url_for('floors.edit_photo', photo_id=doc.id) }}" class="btn btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left me-2"></i>Назад к редактированию фото
+    </a>
+
+    <div class="modal-dialog modal-dialog-centered modal-xl mx-auto" style="max-width: 1100px;">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Выбор точки на плане для фото</h5>
+                <a href="{{ url_for('floors.edit_photo', photo_id=doc.id) }}" class="btn-close" aria-label="Закрыть"></a>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <div class="col-12 col-lg-4">
+                        <h6 class="mb-3">Фото</h6>
+                        {% if doc.thumbnail_path %}
+                        <div class="d-flex align-items-center justify-content-center bg-light rounded-4 border shadow-sm mb-3"
+                             style="height: 260px; max-height: 260px; overflow: hidden;">
+                            <img
+                                src="{{ url_for('static', filename=doc.thumbnail_path.lstrip('/')) }}"
+                                alt="{{ doc.title or doc.filename }}"
+                                class="img-fluid"
+                                style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                            >
+                        </div>
+                        {% endif %}
+                        <p class="small text-muted mb-1"><strong>Название:</strong> {{ doc.title or doc.filename }}</p>
+                        <p class="small text-muted mb-1"><strong>Этаж:</strong> {{ floor.name }}</p>
+                        <p class="small text-muted mb-3"><strong>Корпус:</strong> {{ floor.building.name if floor.building else '—' }}</p>
+
+                        <div class="mb-3">
+                            <label class="form-label small">План этажа</label>
+                            <select id="planSelect" class="form-select form-select-sm">
+                                {% for p in plans %}
+                                <option value="{{ p.id }}" {% if p.id == plan.id %}selected{% endif %}>
+                                    {{ p.custom_name }} ({{ p.uploaded_at.strftime('%d.%m.%Y') if p.uploaded_at else 'без даты' }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Выберите подложку плана, по которой будете указывать точку.</small>
+                        </div>
+
+                        <form id="bindMarkForm" method="POST" action="{{ url_for('floors.bind_mark_to_photo', photo_id=doc.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="plan_id" id="bindPlanId" value="{{ plan.id }}">
+                            <input type="hidden" name="x" id="bindX">
+                            <input type="hidden" name="y" id="bindY">
+                            <div class="mb-3">
+                                <label class="form-label small">Комментарий к метке</label>
+                                <textarea name="note" id="bindNote" class="form-control form-control-sm" rows="2"
+                                          placeholder="Например: ось 3–4, ось Б, отметка перекрытия"></textarea>
+                            </div>
+                            <p class="small text-muted mb-2">
+                                Щёлкните по нужной точке на плане справа — координаты сохранятся автоматически и фото будет привязано к новой метке.
+                            </p>
+                            <button type="submit" id="bindSubmit" class="btn btn-primary btn-sm" disabled>
+                                Сохранить привязку
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="col-12 col-lg-8">
+                        <h6 class="mb-3">План этажа</h6>
+                        <div class="border rounded bg-white p-3 text-center">
+                            <div class="position-relative d-inline-block">
+                                <img
+                                    src="{{ url_for('static', filename=plan.image_path) }}"
+                                    alt="{{ plan.custom_name }}"
+                                    class="img-fluid plan-image-select"
+                                    style="max-height: 70vh; width: auto; display: block; cursor: crosshair;"
+                                >
+                                <!-- Превью новой точки -->
+                                <div id="newMarkPreview"
+                                     class="rounded-circle border border-2 border-success bg-success bg-opacity-25 d-none"
+                                     style="position: absolute; width: 22px; height: 22px; transform: translate(-50%, -50%); pointer-events: none;">
+                                </div>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-2 mb-0">
+                            Нажмите на план, чтобы выбрать точку. Новая метка подсветится зелёным кружком.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const planSelect = document.getElementById('planSelect');
+    const bindPlanId = document.getElementById('bindPlanId');
+    const planImage = document.querySelector('.plan-image-select');
+    const preview = document.getElementById('newMarkPreview');
+    const bindX = document.getElementById('bindX');
+    const bindY = document.getElementById('bindY');
+    const bindSubmit = document.getElementById('bindSubmit');
+
+    if (planSelect && bindPlanId) {
+        planSelect.addEventListener('change', function () {
+            const planId = this.value;
+            if (!planId) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('plan_id', planId);
+            window.location.href = url.toString();
+        });
+    }
+
+    if (planImage && preview && bindX && bindY && bindSubmit) {
+        planImage.addEventListener('click', function (e) {
+            const rect = this.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+
+            // Обновляем превью точки
+            preview.style.left = xPercent + '%';
+            preview.style.top = yPercent + '%';
+            preview.classList.remove('d-none');
+
+            // Записываем координаты в форму
+            bindX.value = xPercent.toFixed(2);
+            bindY.value = yPercent.toFixed(2);
+            bindSubmit.disabled = false;
+        });
+    }
+});
+</script>
+
+{% endblock %}
+
