@@ -1,4 +1,4 @@
-{# StroyBase: боковая панель — иерархическое дерево (Объекты → Проекты → Корпуса → Этажи) + инструменты #}
+{# StroyBase: боковая панель — иерархическое дерево (Объекты → Проекты → Строения → Этажи) + инструменты #}
 <aside class="stroybase-sidebar bg-dark text-white vh-100 position-fixed overflow-auto" id="stroybase-sidebar" style="width: 280px; z-index: 1000;">
     <div class="p-3">
         <div class="text-center mb-3">
@@ -8,7 +8,7 @@
 
         {% if current_user.is_authenticated and current_user.role != 'anonymous' %}
 
-        {# ========== Иерархия: Объекты → Проекты → Корпуса → Этажи ========== #}
+        {# ========== Иерархия: Объекты → Проекты → Строения → Этажи ========== #}
         <div class="mb-3">
             <div class="nav-label text-white-50 small text-uppercase px-3 mb-2">Объекты</div>
             <a href="{{ url_for('main.index') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint == 'main.index' %}bg-primary active{% endif %}">
@@ -39,7 +39,7 @@
                             <div class="collapse {% if is_building_active %}show{% endif %}" id="sb-building-{{ building.id }}">
                                 <div class="ps-3">
                                     <a href="{{ url_for('buildings.view_building', building_id=building.id) }}" class="d-block py-1 px-2 rounded small text-white-50 hover-bg {% if g_building and g_building.id == building.id and not g_floor %}bg-primary text-white{% endif %}">
-                                        <i class="bi bi-folder me-2"></i>Обзор корпуса
+                                        <i class="bi bi-folder me-2"></i>Обзор строения
                                     </a>
                                     {% for floor in building.floors %}
                                     <div class="sb-tree-item">
@@ -89,7 +89,7 @@
             <i class="bi bi-people-fill me-2"></i>Пользователи
         </a>
         <a href="{{ url_for('admin.buildings_list') }}" class="nav-link text-white py-2 px-3 rounded mb-1 {% if request.endpoint and request.endpoint.startswith('admin.buildings_') %}bg-success{% endif %}">
-            <i class="bi bi-building me-2"></i>Корпуса
+            <i class="bi bi-building me-2"></i>Строения
         </a>
         {% endif %}
 
@@ -103,7 +103,7 @@
             <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg w-100 py-3 fs-6">
                 <i class="bi bi-box-arrow-in-right me-2"></i>Войти
             </a>
-            <p class="text-muted small mt-4">Объекты, корпуса, этажи, фото и материалы</p>
+            <p class="text-muted small mt-4">Объекты, строения, этажи, фото и материалы</p>
         </div>
         {% endif %}
     </div>

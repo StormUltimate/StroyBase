@@ -5,7 +5,7 @@
 Так модалка «Ежедневное выполнение» начинает работать: исходный объём учитывается одним днём,
 дальше можно добавлять/редактировать по факту по дням.
 
-Требование: таблица work_progress должна существовать (docs/sql/works_and_progress_create.sql).
+Требование: таблица work_progress должна существовать (flask db upgrade).
 
 Использование:
   python scripts/backfill_work_progress_to_date.py --date YYYY-MM-DD

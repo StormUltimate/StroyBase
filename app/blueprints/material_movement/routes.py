@@ -76,7 +76,7 @@ def _dedupe_by_id(items, id_key="id", fallback_name_template="— {id}"):
 
 
 def _build_project_stock_summary(project_id):
-    """Сводка по складу материалов для проекта: приход на склад объекта, расход на корпуса/этажи и остаток."""
+    """Сводка по складу материалов для проекта: приход на склад объекта, расход на строения/этажи и остаток."""
     try:
         movements = MaterialMovement.query.filter_by(project_id=project_id).all()
     except ProgrammingError:
@@ -139,11 +139,11 @@ def _build_project_stock_summary(project_id):
             }
             summary[key] = row
 
-        # Приход на склад объекта: без привязки к корпусу/этажу
+        # Приход на склад объекта: без привязки к строению/этажу
         if m.movement_type == "Приход" and m.building_id is None and m.floor_id is None:
             row["incoming_qty"] += qty
 
-        # Расход на корпуса/этажи: с привязкой к корпусу (building_id)
+        # Расход на строения/этажи: с привязкой к строению (building_id)
         if m.movement_type == "Расход" and m.building_id is not None:
             row["out_qty"] += qty
 
@@ -172,7 +172,7 @@ def _build_project_stock_summary(project_id):
 @bp.route("/api/buildings", methods=["GET"])
 @login_required
 def api_buildings():
-    """Список корпусов только по project_id. Иерархия: проект → корпуса. Без project_id возвращаем 400."""
+    """Список строений только по project_id. Иерархия: проект → строения. Без project_id возвращаем 400."""
     project_id = request.args.get("project_id", type=int)
     if not project_id:
         return jsonify({"error": "Требуется параметр project_id"}), 400
@@ -184,7 +184,7 @@ def api_buildings():
         )
         items = []
         for b in rows:
-            fallback = f"Корпус {b.id}"
+            fallback = f"Строение {b.id}"
             name = _sanitize_display_name(b.name, fallback)
             if name == fallback and b.name and str(b.name).strip():
                 current_app.logger.debug(
@@ -193,7 +193,7 @@ def api_buildings():
                     b.name[:100] if b.name else None,
                 )
             items.append({"id": b.id, "project_id": b.project_id, "name": name})
-        items = _dedupe_by_id(items, id_key="id", fallback_name_template="Корпус {id}")
+        items = _dedupe_by_id(items, id_key="id", fallback_name_template="Строение {id}")
         items.sort(key=lambda x: (x.get("name") or "").lower())
         return jsonify(items)
     except ProgrammingError:
@@ -204,7 +204,7 @@ def api_buildings():
 @bp.route("/api/floors", methods=["GET"])
 @login_required
 def api_floors():
-    """Список этажей только по building_id. Иерархия: корпус → этажи. Без building_id возвращаем 400."""
+    """Список этажей только по building_id. Иерархия: строение → этажи. Без building_id возвращаем 400."""
     building_id = request.args.get("building_id", type=int)
     if not building_id:
         return jsonify({"error": "Требуется параметр building_id"}), 400
@@ -290,12 +290,12 @@ def index():
         movements = []
         pagination = None
         flash(
-            "Таблица material_movements не найдена в БД. Создайте её в pgAdmin (скрипт sql_material_movements.sql в корне проекта).",
+            "Таблица material_movements не найдена в БД. Выполните: flask db upgrade",
             "warning",
         )
 
     projects = Project.query.order_by(Project.name).all()
-    # Для модалки корпуса и этажи не отдаём в HTML — подгружаются по API (api_buildings, api_floors) с санитизацией названий, без артефактов
+    # Для модалки строения и этажи не отдаём в HTML — подгружаются по API (api_buildings, api_floors) с санитизацией названий, без артефактов
     projects_display = [
         (p.id, _sanitize_display_name(p.name, f"Проект {p.id}")) for p in projects
     ]
@@ -326,7 +326,7 @@ def index():
 @bp.route("/stock", methods=["GET"])
 @login_required
 def stock():
-    """Склад материалов по проекту: приход на объект, расход на корпуса/этажи и остаток с оценкой в деньгах."""
+    """Склад материалов по проекту: приход на объект, расход на строения/этажи и остаток с оценкой в деньгах."""
     project_id = request.args.get("project_id", type=int)
 
     projects = Project.query.order_by(Project.name).all()
@@ -351,7 +351,7 @@ def stock():
 @bp.route("/create", methods=["POST"])
 @login_required
 def create_movement():
-    """Создание записи о движении материала. project_id обязателен, building_id/floor_id опциональны. Корпуса и этажи в модалке подгружаются по API с каскадной фильтрацией."""
+    """Создание записи о движении материала. project_id обязателен, building_id/floor_id опциональны. Строения и этажи в модалке подгружаются по API с каскадной фильтрацией."""
     form = MaterialMovementForm()
     projects = Project.query.order_by(Project.name).all()
     form.project_id.choices = [("", "— Выберите проект —")] + [
@@ -425,7 +425,7 @@ def create_movement():
 @bp.route("/edit/<int:movement_id>", methods=["GET", "POST"])
 @login_required
 def edit_movement(movement_id):
-    """Редактирование записи о движении. Корпуса — только выбранного проекта, этажи — только выбранного корпуса (каскад)."""
+    """Редактирование записи о движении. Строения — только выбранного проекта, этажи — только выбранного строения (каскад)."""
     movement = MaterialMovement.query.get_or_404(movement_id)
     form = MaterialMovementForm(obj=movement)
 

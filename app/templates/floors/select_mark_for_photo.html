@@ -30,7 +30,7 @@
                         {% endif %}
                         <p class="small text-muted mb-1"><strong>Название:</strong> {{ doc.title or doc.filename }}</p>
                         <p class="small text-muted mb-1"><strong>Этаж:</strong> {{ floor.name }}</p>
-                        <p class="small text-muted mb-3"><strong>Корпус:</strong> {{ floor.building.name if floor.building else '—' }}</p>
+                        <p class="small text-muted mb-3"><strong>Строение:</strong> {{ floor.building.name if floor.building else '—' }}</p>
 
                         <div class="mb-3">
                             <label class="form-label small">План этажа</label>

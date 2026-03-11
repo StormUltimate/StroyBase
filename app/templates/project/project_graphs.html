@@ -7,7 +7,7 @@
 
 <div id="works-summary" class="mt-4" data-works-summary-url="{{ url_for('project.works_summary_json', project_id=project.id, graphs_building_id=request.args.get('graphs_building_id') or '', graphs_works_from=request.args.get('graphs_works_from') or '', graphs_works_to=request.args.get('graphs_works_to') or '') }}">
     <h5 class="mb-3">Сводка по объёмам работ (план / факт)</h5>
-    <p class="text-muted small mb-2">Общий % по корпусу/объекту — среднее арифметическое процентов по всем работам: у каждой работы свой % = выполненное/объём×100, все работы участвуют в расчёте. Отклонение = факт − план.</p>
+    <p class="text-muted small mb-2">Общий % по строению/объекту — среднее арифметическое процентов по всем работам: у каждой работы свой % = выполненное/объём×100, все работы участвуют в расчёте. Отклонение = факт − план.</p>
     <div class="row g-2 mb-3">
         <div class="col-md-4">
             <div class="card h-100 sb-summary-by-object">
@@ -88,7 +88,7 @@
         </div>
     </div>
     <p class="text-muted small mb-2">
-        Работы добавляются в каждом корпусе отдельно; здесь — объединённые суммы по наименованию и разделу работ.
+        Работы добавляются в каждом строении отдельно; здесь — объединённые суммы по наименованию и разделу работ.
         % = выполнено / плановый объём × 100.
     </p>
 
@@ -238,7 +238,7 @@
         {% if not any_rows %}
             <div class="mt-3">
                 <div class="alert alert-light text-muted text-center py-3 mb-0">
-                    Нет данных. Добавьте работы в корпусах или загрузите из Excel.
+                    Нет данных. Добавьте работы в строениях или загрузите из Excel.
                 </div>
             </div>
         {% endif %}

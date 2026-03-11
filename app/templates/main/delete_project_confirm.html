@@ -12,13 +12,13 @@
                     <div class="alert alert-warning mb-4">
                         <strong>Будет удалено:</strong>
                         <ul class="mb-0 mt-2">
-                            <li>Корпусов: <strong>{{ impact.buildings }}</strong></li>
+                            <li>Строений: <strong>{{ impact.buildings }}</strong></li>
                             <li>Этажей: <strong>{{ impact.floors }}</strong></li>
                             <li>Документов: <strong>{{ impact.documents }}</strong></li>
                             <li>Записей о движении материалов: <strong>{{ impact.movements }}</strong></li>
                             <li>Записей в графиках работ: <strong>{{ impact.schedule_works }}</strong></li>
                         </ul>
-                        <p class="mb-0 mt-2 small">Также удаляются: участники корпусов, работы в графике, учёт людей по дням, исполнители работ, файлы в каталоге проекта.</p>
+                        <p class="mb-0 mt-2 small">Также удаляются: участники строений, работы в графике, учёт людей по дням, исполнители работ, файлы в каталоге проекта.</p>
                     </div>
                     <form method="post" action="{{ url_for('main.delete_project', project_id=project.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

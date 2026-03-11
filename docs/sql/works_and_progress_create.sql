@@ -1,8 +1,0 @@
--- УСТАРЕВШИЙ SQL-СЦЕНАРИЙ ДЛЯ РУЧНОГО СОЗДАНИЯ ТАБЛИЦ works / work_progress.
--- Схема базы данных StroyBase теперь управляется миграциями Alembic / Flask-Migrate.
--- Для актуализации структуры БД выполните из корня проекта:
---
---   flask db upgrade
---
--- Оригинальный SQL сохранён для справки в файле:
---   docs/sql_archive/works_and_progress_create.sql

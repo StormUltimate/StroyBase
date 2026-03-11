@@ -84,7 +84,7 @@
                     <thead class="table-dark sticky-top">
                         <tr>
                             <th>Проект</th>
-                            <th>Корпус</th>
+                            <th>Строение</th>
                             <th>Этаж</th>
                             <th>Материал</th>
                             <th>Бренд</th>
@@ -179,7 +179,7 @@
             <form method="post" action="{{ url_for('movement.create_movement') }}" id="createMovementForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
-                    <!-- Привязка к объекту: проект → корпус → этаж (каскад) -->
+                    <!-- Привязка к объекту: проект → строение → этаж (каскад) -->
                     <div class="mb-4 pb-3 border-bottom">
                         <label class="form-label fw-semibold text-secondary mb-3">Привязка к объекту</label>
                         <div class="row g-2">
@@ -202,16 +202,16 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small">Корпус</label>
+                                <label class="form-label small">Строение</label>
                                 <div class="position-relative">
-                                    <select name="building_id" id="modal_building_id" class="form-select" aria-label="Корпус" disabled>
+                                    <select name="building_id" id="modal_building_id" class="form-select" aria-label="Строение" disabled>
                                         <option value="">Не привязан</option>
                                     </select>
                                     <span id="modal_building_spinner" class="position-absolute top-50 end-0 translate-middle-y me-2 d-none" aria-hidden="true">
                                         <span class="spinner-border spinner-border-sm text-secondary" role="status"></span>
                                     </span>
                                 </div>
-                                <small id="modal_building_hint" class="text-muted d-none" role="status">У проекта нет корпусов</small>
+                                <small id="modal_building_hint" class="text-muted d-none" role="status">У проекта нет строений</small>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small">Этаж</label>
@@ -369,7 +369,7 @@
                     seenIds.add(id);
                     var opt = document.createElement('option');
                     opt.value = String(id);
-                    opt.textContent = safeText(b.name) || ('Корпус ' + id);
+                    opt.textContent = safeText(b.name) || ('Строение ' + id);
                     buildingSelect.appendChild(opt);
                 });
                 var hint = document.getElementById('modal_building_hint');

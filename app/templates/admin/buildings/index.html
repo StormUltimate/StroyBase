@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Админка — Корпуса{% endblock %}
+{% block title %}Админка — Строения{% endblock %}
 {% block content %}
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <div>
-            <h2 class="mb-1">Корпуса</h2>
-            <p class="text-muted mb-0">Все корпуса в системе. Удаление лишних — только вручную через кнопку «Удалить» с выбором: полное удаление или переназначение связей на другой корпус.</p>
+            <h2 class="mb-1">Строения</h2>
+            <p class="text-muted mb-0">Все строения в системе. Удаление лишних — только вручную через кнопку «Удалить» с выбором: полное удаление или переназначение связей на другое строение.</p>
         </div>
         <form action="{{ url_for('admin.reset_all_works') }}" method="post" onsubmit="return confirm('Очистить ВСЕ работы и ежедневное выполнение по всем объектам? Это действие невозможно отменить. Продолжить?');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -17,7 +17,7 @@
 
     {% if projects_with_many_buildings %}
     <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <strong>Обнаружено много корпусов</strong> у одного или нескольких проектов — проверьте список на дубликаты и при необходимости удалите лишние.
+        <strong>Обнаружено много строений</strong> у одного или нескольких проектов — проверьте список на дубликаты и при необходимости удалите лишние.
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
     </div>
     {% endif %}
@@ -67,35 +67,35 @@
     </div>
 
     {% if not rows %}
-    <p class="text-muted">Нет корпусов.</p>
+    <p class="text-muted">Нет строений.</p>
     {% endif %}
 </div>
 
-<!-- Модальное окно: удаление корпуса -->
+<!-- Модальное окно: удаление строения -->
 <div class="modal fade" id="deleteBuildingModal" tabindex="-1" aria-labelledby="deleteBuildingModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="deleteBuildingModalLabel">Удаление корпуса</h5>
+                <h5 class="modal-title" id="deleteBuildingModalLabel">Удаление строения</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-2">Корпус: <strong id="modalBuildingName"></strong></p>
-                <p class="text-muted small mb-3">Будут затронуты: этажи (<span id="modalFloorsCount">0</span>), записи движения материалов (<span id="modalMovementsCount">0</span>), документы, работы в графике и участники корпуса.</p>
+                <p class="mb-2">Строение: <strong id="modalBuildingName"></strong></p>
+                <p class="text-muted small mb-3">Будут затронуты: этажи (<span id="modalFloorsCount">0</span>), записи движения материалов (<span id="modalMovementsCount">0</span>), документы, работы в графике и участники строения.</p>
                 <div class="alert alert-warning small">
-                    Выберите один из вариантов: удалить корпус полностью (этажи и данные по нему будут удалены) или переназначить все связи на другой корпус того же проекта.
+                    Выберите один из вариантов: удалить строение полностью (этажи и данные по нему будут удалены) или переназначить все связи на другое строение того же проекта.
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Переназначить на другой корпус</label>
+                    <label class="form-label">Переназначить на другое строение</label>
                     <select class="form-select" id="reassignTargetSelect">
                         <option value="">— не переназначать —</option>
                     </select>
-                    <small class="form-text text-muted">Если выбран корпус — все этажи и связи перейдут на него, затем текущий корпус будет удалён.</small>
+                    <small class="form-text text-muted">Если выбрано строение — все этажи и связи перейдут на него, затем текущее строение будет удалено.</small>
                 </div>
 
                 <hr>
-                <p class="mb-0 small text-muted">Полное удаление: обнуляются привязки документов/движений к корпусу, этажи и сам корпус удаляются.</p>
+                <p class="mb-0 small text-muted">Полное удаление: обнуляются привязки документов/движений к строению, этажи и само строение удаляются.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -106,7 +106,7 @@
                 <form method="post" action="" id="formReassign" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="target_building_id" id="inputTargetId" value=""/>
-                    <button type="submit" class="btn btn-primary" id="btnReassign">Переназначить на выбранный корпус</button>
+                    <button type="submit" class="btn btn-primary" id="btnReassign">Переназначить на выбранное строение</button>
                 </form>
             </div>
         </div>
@@ -149,7 +149,7 @@
         sameIds.forEach(function(id, i) {
             const opt = document.createElement('option');
             opt.value = id;
-            opt.textContent = sameNames[i] || 'Корпус ' + id;
+            opt.textContent = sameNames[i] || 'Строение ' + id;
             reassignTargetSelect.appendChild(opt);
         });
 
@@ -163,7 +163,7 @@
         const val = reassignTargetSelect.value;
         if (!val) {
             e.preventDefault();
-            alert('Выберите корпус для переназначения.');
+            alert('Выберите строение для переназначения.');
             return;
         }
         inputTargetId.value = val;
@@ -172,7 +172,7 @@
     btnReassign.addEventListener('click', function(e) {
         if (!reassignTargetSelect.value) {
             e.preventDefault();
-            alert('Выберите корпус для переназначения.');
+            alert('Выберите строение для переназначения.');
         }
     });
 

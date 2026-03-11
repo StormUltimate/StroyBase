@@ -1,13 +1,13 @@
-{# Вкладка «Сводка по объёмам работ» корпуса: сводка (план/факт) и таблица «Работы по корпусу» #}
+{# Вкладка «Сводка по объёмам работ» строения: сводка (план/факт) и таблица «Работы по строению» #}
 {# Контекст: project, building, works_by_building, works_summary_project, works_summary_buildings, graphs_works_from_str, graphs_works_to_str #}
 <nav class="mb-3 small" aria-label="Навигация по разделу">
     <a href="#works-summary" class="me-3">Сводка по объёмам</a>
-    <a href="#works-by-building" class="me-3">Работы по корпусу</a>
+    <a href="#works-by-building" class="me-3">Работы по строению</a>
 </nav>
 
 <div id="works-summary" class="mt-4" data-works-summary-url="{{ url_for('project.works_summary_json', project_id=project.id, graphs_building_id=building.id, graphs_works_from=graphs_works_from_str or '', graphs_works_to=graphs_works_to_str or '') }}">
     <h5 class="mb-3">Сводка по объёмам работ (план / факт)</h5>
-    <p class="text-muted small mb-2">Общий % по корпусу — среднее арифметическое процентов по всем работам: каждая работа даёт свой %, все участвуют в расчёте. Отклонение = факт − план.</p>
+    <p class="text-muted small mb-2">Общий % по строению — среднее арифметическое процентов по всем работам: каждая работа даёт свой %, все участвуют в расчёте. Отклонение = факт − план.</p>
     <div class="row g-2 mb-3">
         {% for s in works_summary_buildings or [] %}
         <div class="col-md-4 works-summary-building-card" data-building-id="{{ s.building.id }}">
@@ -49,7 +49,7 @@
 </div>
 
 <div id="works-by-building" class="mt-4">
-    <h5 class="mb-3">Работы по корпусу</h5>
+    <h5 class="mb-3">Работы по строению</h5>
     {% for group in works_by_building or [] %}
     <div class="card mb-3 works-by-building-card" data-building-id="{{ group.building.id }}">
         <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">

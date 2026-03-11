@@ -117,7 +117,7 @@ class Building(db.Model):
 
 
 class BuildingParticipant(db.Model):
-    """Участник корпуса: Заказчик, Генподрядчик, Технадзор, Застройщик и т.д."""
+    """Участник строения: Заказчик, Генподрядчик, Технадзор, Застройщик и т.д."""
 
     __tablename__ = "building_participants"
     id = db.Column(db.Integer, primary_key=True)
@@ -196,7 +196,6 @@ class ScheduleWork(db.Model):
 
 
 # Задачи общего плана производства (ГПП) — Gantt на уровне проекта: название, период, тип (цвет), зависимость.
-# SQL для pgAdmin: см. docs/sql/plan_tasks_create.sql
 class PlanTask(db.Model):
     """Задача в общем плане производства (ГПП): отображается в Gantt на дашборде проекта."""
 
@@ -238,11 +237,10 @@ class PlanTask(db.Model):
     floor = db.relationship("Floor", backref=db.backref("plan_tasks", lazy=True))
 
 
-# Работы по корпусам (объёмы, единицы, плановые даты, % выполнения) — для сводной по проекту из Excel.
+# Работы по строениям (объёмы, единицы, плановые даты, % выполнения) — для сводной по проекту из Excel.
 # Иерархия: Project → Building → Work → WorkProgress.
-# SQL для pgAdmin: docs/sql/works_and_progress_create.sql
 class Work(db.Model):
-    """Работа по корпусу: тип/название, объём, единица, плановая дата завершения, % выполнения."""
+    """Работа по строению: тип/название, объём, единица, плановая дата завершения, % выполнения."""
 
     __tablename__ = "works"
     id = db.Column(db.Integer, primary_key=True)
@@ -433,7 +431,7 @@ class Document(db.Model):
     height_px = db.Column(db.Integer)
     # Признак того, что изображение является сканом документа (акт, письмо и т.п.), а не «фото стройки»
     is_document_image = db.Column(db.Boolean, nullable=True)
-    # Поля для документов типа «Договор» (вкладка Договора на странице корпуса)
+    # Поля для документов типа «Договор» (вкладка Договора на странице строения)
     contract_number = db.Column(db.String(100), nullable=True)  # номер договора
     contract_date = db.Column(db.Date, nullable=True)  # дата заключения
     counterparty = db.Column(db.String(255), nullable=True)  # контрагент
@@ -619,7 +617,7 @@ class Order(db.Model):
     note = db.Column(db.Text)
 
 
-# Запись о движении материала: привязка к объекту (проект обязателен, корпус/этаж — опционально).
+# Запись о движении материала: привязка к объекту (проект обязателен, строение/этаж — опционально).
 # SQL для ручного создания/изменения в pgAdmin:
 # CREATE TABLE IF NOT EXISTS material_movements (
 #     id SERIAL PRIMARY KEY,
@@ -639,7 +637,7 @@ class Order(db.Model):
 # CREATE INDEX IF NOT EXISTS idx_material_movements_floor ON material_movements(floor_id);
 # CREATE INDEX IF NOT EXISTS idx_material_movements_date ON material_movements(movement_date);
 class MaterialMovement(db.Model):
-    """Запись о движении материала: приход, расход, перемещение. Привязка к проекту обязательна, к корпусу/этажу — опциональна. Документы (накладная, УПД, сертификаты) — через movement_document_links."""
+    """Запись о движении материала: приход, расход, перемещение. Привязка к проекту обязательна, к строению/этажу — опциональна. Документы (накладная, УПД, сертификаты) — через movement_document_links."""
 
     __tablename__ = "material_movements"
     id = db.Column(db.Integer, primary_key=True)
@@ -679,7 +677,6 @@ class MaterialMovement(db.Model):
 
 
 # Связь «движение материала» ↔ «документ» с типом (накладная, УПД, сертификат).
-# SQL: docs/sql/material_movement_extend_and_documents.sql
 class MovementDocument(db.Model):
     """Привязка документа к записи о движении материала (накладная, УПД, сертификат)."""
 

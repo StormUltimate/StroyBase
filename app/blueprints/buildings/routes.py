@@ -1,7 +1,7 @@
 # app/blueprints/buildings/routes.py
 """
 Buildings blueprint for StroyBase.
-Handles CRUD for buildings (корпуса/здания), document upload/view/delete,
+Handles CRUD for buildings (строения/здания), document upload/view/delete,
 and related filtering.
 """
 
@@ -72,7 +72,7 @@ def create_building(project_id):
         note = request.form.get("note", "").strip() or None
 
         if not name:
-            flash("Название корпуса обязательно", "danger")
+            flash("Название строения обязательно", "danger")
             return render_template("buildings/create_building.html", project=project)
 
         colors = [
@@ -97,7 +97,7 @@ def create_building(project_id):
         db.session.add(building)
         db.session.commit()
 
-        flash("Корпус успешно создан", "success")
+        flash("Строение успешно создано", "success")
         return redirect(url_for("project.dashboard", project_id=project_id))
 
     return render_template("buildings/create_building.html", project=project)
@@ -115,7 +115,7 @@ def edit_building(building_id):
         note = request.form.get("note", "").strip() or None
 
         if not name:
-            flash("Название корпуса обязательно", "danger")
+            flash("Название строения обязательно", "danger")
             return render_template("buildings/edit.html", building=building), 200
 
         building.name = name
@@ -123,7 +123,7 @@ def edit_building(building_id):
         building.work_type = work_type
         building.note = note
         db.session.commit()
-        flash("Корпус успешно обновлён", "success")
+        flash("Строение успешно обновлено", "success")
         return redirect(url_for("buildings.view_building", building_id=building_id))
 
     return render_template("buildings/edit.html", building=building)
@@ -139,7 +139,7 @@ def delete_building(building_id):
     db.session.delete(building)
     db.session.commit()
 
-    flash("Корпус успешно удалён (вместе с этажами и документами)", "info")
+    flash("Строение успешно удалено (вместе с этажами и документами)", "info")
     return redirect(url_for("project.dashboard", project_id=project_id))
 
 
@@ -261,7 +261,7 @@ def view_building(building_id):
         # Таблица schedule_works ещё не создана в pgAdmin — показываем пустой список
         schedule_works = []
 
-    # План и график работ по объёмам (Works/WorkProgress) — один корпус, как на объекте
+    # План и график работ по объёмам (Works/WorkProgress) — одно строение, как на объекте
     from app.blueprints.project.routes import _build_works_summary
 
     try:
@@ -291,7 +291,7 @@ def view_building(building_id):
             }
         ]
 
-    # Сводка материалов по корпусу: группировка по тегу/категории, наименованию и бренду по всем этажам корпуса
+    # Сводка материалов по строению: группировка по тегу/категории, наименованию и бренду по всем этажам строения
     from decimal import Decimal
 
     building_material_summary = []
@@ -335,7 +335,7 @@ def view_building(building_id):
         db.session.rollback()
         building_material_summary = []
 
-    # Сводка площадей и величин по корпусу: группировка по наименованию и единице по всем этажам корпуса
+    # Сводка площадей и величин по строению: группировка по наименованию и единице по всем этажам строения
     building_quantities_summary = []
     try:
         building_quantities = (

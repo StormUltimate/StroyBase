@@ -106,7 +106,7 @@ def create_app():
             )
         elif data.get("g_project"):
             data["g_floors"] = []
-        # Дерево объектов в боковом меню (проекты с корпусами и этажами)
+        # Дерево объектов в боковом меню (проекты со строениями и этажами)
         data["nav_projects"] = (
             Project.query.order_by(Project.name).all()
             if current_user.is_authenticated

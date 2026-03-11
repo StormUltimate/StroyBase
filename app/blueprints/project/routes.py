@@ -99,7 +99,7 @@ def dashboard(project_id):
     # Базовый запрос по проекту
     query = Document.query.filter_by(project_id=project_id)
 
-    # Фильтр по корпусу (если указан)
+    # Фильтр по строению (если указан)
     if building_id is not None:
         query = query.filter_by(building_id=building_id)
     # Фильтр по этажу (если указан)
@@ -255,7 +255,7 @@ def dashboard(project_id):
         sw_query = ScheduleWork.query.outerjoin(
             Building, ScheduleWork.building_id == Building.id
         )
-        # Работы, явно привязанные к проекту, или работы корпусов этого проекта (для старых записей без project_id)
+        # Работы, явно привязанные к проекту, или работы строений этого проекта (для старых записей без project_id)
         sw_query = sw_query.filter(
             or_(
                 ScheduleWork.project_id == project_id, Building.project_id == project_id
@@ -434,7 +434,7 @@ def dashboard(project_id):
     except ProgrammingError:
         db.session.rollback()
 
-    # Works (works/work_progress): сводка и детализация по корпусам
+    # Works (works/work_progress): сводка и детализация по строениям
     graphs_works_from_str = request.args.get("graphs_works_from")
     graphs_works_to_str = request.args.get("graphs_works_to")
     works_by_building, works_summary_project, works_summary_buildings = (
@@ -647,7 +647,7 @@ def _build_works_summary(
     graphs_works_to_str=None,
 ):
     """Построить works_by_building, works_summary_project, works_summary_buildings.
-    Общий % по корпусу/объекту — среднее арифметическое процентов по всем работам (каждая работа даёт свой % = выполненное/объём×100).
+    Общий % по строению/объекту — среднее арифметическое процентов по всем работам (каждая работа даёт свой % = выполненное/объём×100).
     """
     works_by_building = []
     works_summary_project = {
@@ -717,7 +717,7 @@ def _build_works_summary(
             entries_vol = [e for e in entries if (e["volume"] or 0) > 0]
             tv = sum(e["volume"] for e in entries_vol)
             te = sum(e["executed"] for e in entries_vol)
-            # Общий % по корпусу — среднее арифметическое процентов по всем работам корпуса
+            # Общий % по строению — среднее арифметическое процентов по всем работам строения
             pct_list_b = [
                 e["percent"] for e in entries_vol if e.get("percent") is not None
             ]
@@ -1076,17 +1076,17 @@ def _work_daily_json(project_id, work_id, keys=("dates", "executions")):
 @project_bp.route("/<int:project_id>/works/add", methods=["POST"])
 @login_required
 def add_work(project_id):
-    """Добавить работу по корпусу (name, volume, unit, planned_date)."""
+    """Добавить работу по строению (name, volume, unit, planned_date)."""
     project = Project.query.get_or_404(project_id)
     building_id = request.form.get("building_id", type=int)
     if not building_id:
-        flash("Укажите корпус.", "warning")
+        flash("Укажите строение.", "warning")
         return redirect(
             url_for("project.dashboard", project_id=project_id) + "#project-graphs"
         )
     building = Building.query.filter_by(id=building_id, project_id=project_id).first()
     if not building:
-        flash("Корпус не найден.", "warning")
+        flash("Строение не найдено.", "warning")
         return redirect(
             url_for("project.dashboard", project_id=project_id) + "#project-graphs"
         )
@@ -1355,7 +1355,7 @@ def works_import_excel(project_id):
         flash("Импорт выполнен. Данные загружены из Excel.", "success")
     except subprocess.CalledProcessError:
         flash(
-            "Ошибка при импорте (проверьте формат файла и наличие корпусов).", "danger"
+            "Ошибка при импорте (проверьте формат файла и наличие строений).", "danger"
         )
     except Exception as e:
         flash("Ошибка загрузки: " + str(e), "danger")
@@ -1833,7 +1833,7 @@ def delete_performer(project_id, performer_id):
 @project_bp.route("/<int:project_id>/schedules/add", methods=["POST"])
 @login_required
 def add_schedule_work(project_id):
-    """Добавить работу в график на уровне объекта (с опциональной привязкой к корпусу и этажу)."""
+    """Добавить работу в график на уровне объекта (с опциональной привязкой к строению и этажу)."""
     project = Project.query.get_or_404(project_id)
     name = (request.form.get("name") or "").strip() or None
     planned_start = _parse_date_project(request.form.get("planned_start"))
@@ -1860,7 +1860,7 @@ def add_schedule_work(project_id):
     if building_id:
         building = Building.query.get_or_404(building_id)
         if building.project_id != project_id:
-            flash("Выбранный корпус не принадлежит объекту", "danger")
+            flash("Выбранное строение не принадлежит объекту", "danger")
             return redirect(
                 url_for("project.dashboard", project_id=project_id) + "#project-graphs"
             )
@@ -1869,7 +1869,7 @@ def add_schedule_work(project_id):
         if floor.building.project_id != project_id or (
             building and floor.building_id != building.id
         ):
-            flash("Выбранный этаж не принадлежит объекту/корпусу", "danger")
+            flash("Выбранный этаж не принадлежит объекту/строению", "danger")
             return redirect(
                 url_for("project.dashboard", project_id=project_id) + "#project-graphs"
             )
@@ -2094,7 +2094,7 @@ def create_building(project_id):
             building = Building(name=name, project_id=project_id)
             db.session.add(building)
             db.session.commit()
-            flash("Корпус создан", "success")
+            flash("Строение создано", "success")
             return redirect(url_for("project.dashboard", project_id=project_id))
         flash("Название обязательно", "danger")
     return render_template(
@@ -2126,14 +2126,14 @@ def upload_documents(project_id):
     if building_id:
         building = Building.query.get_or_404(building_id)
         if building.project_id != project_id:
-            flash("Корпус не принадлежит объекту", "danger")
+            flash("Строение не принадлежит объекту", "danger")
             return redirect(url_for("project.dashboard", project_id=project_id))
     if floor_id:
         floor = Floor.query.get_or_404(floor_id)
         if floor.building.project_id != project_id or (
             building_id and floor.building_id != building_id
         ):
-            flash("Этаж не принадлежит выбранному объекту/корпусу", "danger")
+            flash("Этаж не принадлежит выбранному объекту/строению", "danger")
             return redirect(url_for("project.dashboard", project_id=project_id))
 
     base_dir = os.path.join(
@@ -2251,10 +2251,10 @@ def delete_document(doc_id):
 @project_bp.route("/document/<int:doc_id>/view")
 @login_required
 def view_document(doc_id):
-    """Просмотр/скачивание документа на уровне проекта (поддерживает проектные, корпусные и этажные файлы)."""
+    """Просмотр/скачивание документа на уровне проекта (поддерживает проектные, по строениям и этажные файлы)."""
     doc = Document.query.get_or_404(doc_id)
 
-    # Определяем проект для документа (прямо или через корпус/этаж)
+    # Определяем проект для документа (прямо или через строение/этаж)
     project_id = doc.project_id
     if not project_id and doc.building_id:
         building = Building.query.get(doc.building_id)
@@ -2287,10 +2287,10 @@ def view_document(doc_id):
 @project_bp.route("/document/<int:doc_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_document(doc_id):
-    """Редактирование документа (название, описание, теги, корпус/этаж, статус скана) на любом уровне."""
+    """Редактирование документа (название, описание, теги, строение/этаж, статус скана) на любом уровне."""
     doc = Document.query.get_or_404(doc_id)
 
-    # Определяем проект/корпус/этаж для контекста и редиректа
+    # Определяем проект/строение/этаж для контекста и редиректа
     project = None
     building = None
     floor = None
@@ -2315,7 +2315,7 @@ def edit_document(doc_id):
     all_doc_types = DocType.query.order_by(DocType.sort_order).all()
     current_types = [wt.id for wt in doc.work_types]
 
-    # Списки корпусов и этажей для выбора
+    # Списки строений и этажей для выбора
     buildings = (
         Building.query.filter_by(project_id=project.id).order_by(Building.name).all()
     )
@@ -2347,7 +2347,7 @@ def edit_document(doc_id):
         # Признак «скан документа»
         doc.is_document_image = True if request.form.get("is_document_image") else False
 
-        # Привязка к корпусу и этажу (в пределах проекта)
+        # Привязка к строению и этажу (в пределах проекта)
         building_id = request.form.get("building_id", type=int)
         floor_id = request.form.get("floor_id", type=int)
 
@@ -2356,17 +2356,17 @@ def edit_document(doc_id):
         if building_id:
             new_building = Building.query.get_or_404(building_id)
             if new_building.project_id != project.id:
-                flash("Выбранный корпус не принадлежит текущему объекту", "danger")
+                flash("Выбранное строение не принадлежит текущему объекту", "danger")
                 return redirect(url_for("project.edit_document", doc_id=doc.id))
         if floor_id:
             new_floor = Floor.query.get_or_404(floor_id)
             if new_floor.building.project_id != project.id:
                 flash("Выбранный этаж не принадлежит текущему объекту", "danger")
                 return redirect(url_for("project.edit_document", doc_id=doc.id))
-            # Если корпус не выбран или выбран другой, берём корпус этажа
+            # Если строение не выбрано или выбрано другое, берём строение этажа
             new_building = new_floor.building
 
-        # Если этаж не выбран, но корпус выбран — просто сбрасываем floor_id
+        # Если этаж не выбран, но строение выбрано — просто сбрасываем floor_id
         if not floor_id and new_building:
             new_floor = None
 

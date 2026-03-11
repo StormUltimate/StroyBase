@@ -27,8 +27,8 @@
 ## Установка — 5 минут
 
 ```bash
-git clone https://github.com/<your-org>/stroybase.git
-cd stroybase
+git clone https://github.com/StormUltimate/StroyBase.git
+cd StroyBase
 python -m venv venv
 venv\Scripts\activate  # или source venv/bin/activate
 pip install -r requirements.txt

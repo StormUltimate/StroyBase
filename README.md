@@ -1,7 +1,7 @@
 # StroyBase
 <<<<<<< HEAD
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/<your-org>/stroybase?sort=semver)](https://github.com/<your-org>/stroybase/releases)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/StormUltimate/StroyBase?sort=semver)](https://github.com/StormUltimate/StroyBase/releases)
 
 Current version: **v0.9.0** — public beta
 
@@ -47,20 +47,41 @@ v0.9.0 — публичная бета. Основной функционал (�
 
 Шаблон **`app/templates/project/project_graphs.html`** — фрагмент с навигацией по якорям (#works-summary, #works-by-building). API **GET /project/&lt;id&gt;/works/&lt;work_id&gt;/progress** отдаёт данные для графика (опционально с параметрами from_date, to_date).
 
-**Подготовка БД (устаревший подход):** ранее таблица `plan_tasks` создавалась по отдельному SQL‑скрипту, а таблицы `works` и `work_progress` — по `docs/sql/works_and_progress_create.sql`. Сейчас структура БД управляется миграциями (Flask-Migrate / Alembic); актуальные инструкции смотрите в разделе «Database migrations».
+**Подготовка БД:** структура управляется миграциями (Flask-Migrate / Alembic). См. раздел «Installation & Migrations».
 
 ---
 
 ## Installation & Migrations / Установка и миграции БД
 
+### Автоустановка (Windows)
+
+Скрипт **`autosetup.bat`** выполняет всё за один запуск: создаёт виртуальное окружение, устанавливает зависимости, применяет миграции и запускает приложение.
+
+**Требования:** Python 3.10+ в PATH, PostgreSQL с созданной базой `StroyBase`.
+
+1. Клонируйте репозиторий и перейдите в папку проекта.
+2. При необходимости задайте переменные окружения (или отредактируйте строки в `autosetup.bat`):
+   ```cmd
+   set DATABASE_URL=postgresql://user:password@localhost:5432/StroyBase
+   set SECRET_KEY=your-secret-key
+   ```
+3. Запустите:
+   ```cmd
+   autosetup.bat
+   ```
+   Скрипт создаст `venv`, установит зависимости из `requirements.txt`, выполнит `flask db upgrade` и запустит приложение на http://127.0.0.1:5000
+
+---
+
+### Ручная установка
+
 1. **Клонировать репозиторий и создать окружение**
 
    ```bash
-   git clone https://github.com/<your-org>/stroybase.git
-   cd stroybase
+   git clone https://github.com/StormUltimate/StroyBase.git
+   cd StroyBase
    python -m venv venv
    venv\Scripts\activate  # Windows
-   # или
    source venv/bin/activate  # Linux/macOS
    pip install -r requirements.txt
    ```
@@ -118,13 +139,6 @@ Crypto donations (USDT, public wallets only):
 | Bybit    | ERC20  | `0xd5cf1c5351129875620c40760bbac07771ff860a`        |
 Donations are **voluntary and non‑refundable**.  
 If you’d like to be mentioned, open a Discussion or Issue after your donation and we’ll add you to the acknowledgements list (if you agree to be public).
-=======
-StroyBase — открытая платформа для ПТО стройорганизаций | Open platform for construction site management (PTO digitization)
-**Open-source web application for the PTO (Production and Technical Department) of a construction company.**
-
-Web-приложение для отдела ПТО строительной компании: объекты, корпуса, этажи, фото, документы, техинформация, планы этажей и учёт материалов.
-
----
 
 ## English
 
@@ -147,7 +161,7 @@ StroyBase helps construction PTO teams manage projects in a three-level hierarch
 
 - **Backend:** Flask, Blueprints, Flask-Login, Flask-WTF
 - **ORM:** SQLAlchemy 2.x, Flask-SQLAlchemy
-- **Database:** PostgreSQL (schema and data managed manually via pgAdmin; no Alembic migrations)
+- **Database:** PostgreSQL (schema via Flask-Migrate / Alembic)
 - **Frontend:** Jinja2, Bootstrap 5 (CDN), vanilla JS
 - **Storage:** Local files in `static/media/projects/{project_id}/building_{building_id}/floor_{floor_id}/` with unique names and thumbnails
 
@@ -158,6 +172,10 @@ StroyBase helps construction PTO teams manage projects in a three-level hierarch
 - See `requirements.txt` for Python dependencies
 
 ### Installation
+
+**Windows (quick):** Run `autosetup.bat` — it creates venv, installs dependencies, applies migrations, and starts the app. Requires Python 3.10+ and PostgreSQL.
+
+**Manual:**
 
 1. Clone the repository.
 2. Create a virtual environment and install dependencies:
@@ -172,7 +190,7 @@ StroyBase helps construction PTO teams manage projects in a three-level hierarch
    set SECRET_KEY=your-secret-key
    ```
    Or use `.env` with `python-dotenv` (see `app/config.py`: `DATABASE_URL`, `SECRET_KEY`).
-4. Create tables and schema in pgAdmin (or run your SQL scripts). Optional scripts in the repo root (e.g. `sql_floor_quantities.sql`, `sql_floor_equipment.sql`, `sql_material_movements.sql`) can be run manually for extra tables.
+4. Apply database schema: `flask db upgrade`
 5. Run the application:
    ```bash
    python run.py
@@ -181,7 +199,7 @@ StroyBase helps construction PTO teams manage projects in a three-level hierarch
 
 ### Database
 
-The database is maintained manually (pgAdmin or psql). No migration system is used. New tables/columns are introduced via SQL scripts; model fields are kept nullable where possible to avoid errors before schema updates.
+Schema is managed by Flask-Migrate / Alembic. Run `flask db upgrade` to apply migrations.
 
 ### Project structure
 
@@ -194,11 +212,12 @@ StroyBase/
 │   ├── forms.py        # WTForms
 │   ├── config.py
 │   └── __init__.py     # create_app, Flask app
+├── migrations/         # Alembic migrations
 ├── static/
 │   └── media/          # uploaded files by project/building/floor
 ├── run.py              # entry point
+├── autosetup.bat       # автоустановка и запуск (Windows)
 ├── requirements.txt
-├── sql_*.sql           # optional manual schema scripts
 └── CHANGELOG.md        # history of changes (Russian)
 ```
 
@@ -229,7 +248,7 @@ StroyBase — веб-приложение для отдела ПТО строи�
 
 - **Сервер:** Flask, Blueprints, Flask-Login, Flask-WTF
 - **ORM:** SQLAlchemy 2.x, Flask-SQLAlchemy
-- **БД:** PostgreSQL (схема и данные ведутся вручную через pgAdmin; миграции Alembic не используются)
+- **БД:** PostgreSQL (схема через Flask-Migrate / Alembic)
 - **Фронт:** Jinja2, Bootstrap 5 (CDN), vanilla JS
 - **Файлы:** Локально в `static/media/projects/{project_id}/building_{building_id}/floor_{floor_id}/` с уникальными именами и превью
 
@@ -240,6 +259,10 @@ StroyBase — веб-приложение для отдела ПТО строи�
 - Зависимости из `requirements.txt`
 
 ### Установка
+
+**Windows (быстро):** Запустите `autosetup.bat` — скрипт создаст venv, установит зависимости, применит миграции и запустит приложение. Нужны Python 3.10+ и PostgreSQL.
+
+**Вручную:**
 
 1. Клонировать репозиторий.
 2. Создать виртуальное окружение и установить зависимости:
@@ -254,7 +277,7 @@ StroyBase — веб-приложение для отдела ПТО строи�
    set SECRET_KEY=your-secret-key
    ```
    Либо использовать `.env` (см. `app/config.py`: `DATABASE_URL`, `SECRET_KEY`).
-4. Создать таблицы и схему в pgAdmin (или выполнить свои SQL-скрипты). В корне репозитория лежат опциональные скрипты (`sql_floor_quantities.sql`, `sql_floor_equipment.sql`, `sql_material_movements.sql` и др.) для ручного создания дополнительных таблиц.
+4. Применить схему БД: `flask db upgrade`
 5. Запуск:
    ```bash
    python run.py
@@ -263,7 +286,7 @@ StroyBase — веб-приложение для отдела ПТО строи�
 
 ### База данных
 
-База данных ведётся вручную (pgAdmin или psql). Система миграций не используется. Новые таблицы и поля вводятся через SQL-скрипты; в моделях поля по возможности nullable, чтобы приложение не падало до обновления схемы.
+Схема управляется Flask-Migrate / Alembic. Выполните `flask db upgrade` для применения миграций.
 
 ### Структура проекта
 
@@ -276,11 +299,11 @@ StroyBase/
 │   ├── forms.py        # формы WTForms
 │   ├── config.py
 │   └── __init__.py     # create_app, приложение Flask
+├── migrations/         # миграции Alembic
 ├── static/
 │   └── media/          # загруженные файлы по объекту/корпусу/этажу
 ├── run.py              # точка входа
+├── autosetup.bat       # автоустановка и запуск (Windows)
 ├── requirements.txt
-├── sql_*.sql           # опциональные скрипты схемы
 └── CHANGELOG.md        # история изменений
 ```
->>>>>>> eef705a29418a3f52fb17dfe4f0430334b51a653

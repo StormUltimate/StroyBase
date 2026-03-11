@@ -23,7 +23,7 @@ body {
     color: rgba(255, 255, 255, 0.65) !important;
 }
 
-/* Карточки корпусов в боковой панели — тёмный фон + цветная полоса */
+/* Карточки строений в боковой панели — тёмный фон + цветная полоса */
 .sidebar-building-card {
     background-color: #2c3034 !important;
     border-left: 5px solid;
@@ -37,7 +37,7 @@ body {
 .sidebar-building-card.border-purple { border-left-color: #6f42c1; }
 .sidebar-building-card.border-danger { border-left-color: #dc3545; }
 
-/* Текст внутри карточек корпусов — белый и читаемый */
+/* Текст внутри карточек строений — белый и читаемый */
 .sidebar-building-card .text-white,
 .sidebar-building-card h6,
 .sidebar-building-card small {
@@ -289,7 +289,7 @@ body {
     }
 }
 
-/* ========== Страница проекта: одна колонка, секция «Корпуса проекта» ========== */
+/* ========== Страница проекта: одна колонка, секция «Строения проекта» ========== */
 .sb-project-dashboard .col-12 {
     padding-left: 1rem;
     padding-right: 1rem;
@@ -307,7 +307,7 @@ body {
     }
 }
 
-/* Карточки корпусов в основной области */
+/* Карточки строений в основной области */
 .sb-building-card {
     border-radius: 0.5rem;
     transition: box-shadow 0.2s ease;
@@ -332,7 +332,7 @@ body {
     outline-color: #dc3545;
 }
 
-/* Страницы корпуса и этажа: одна колонка (как дашборд проекта) */
+/* Страницы строения и этажа: одна колонка (как дашборд проекта) */
 .sb-object-view .col-12 {
     padding-left: 1rem;
     padding-right: 1rem;
@@ -361,7 +361,7 @@ body {
     outline-color: #dc3545;
 }
 
-/* Правая колонка на странице корпуса: список этажей по клику, без кнопок */
+/* Правая колонка на странице строения: список этажей по клику, без кнопок */
 .sb-object-right-sidebar:empty {
     display: none;
 }

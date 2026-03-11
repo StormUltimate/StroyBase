@@ -1,5 +1,5 @@
 {# StroyBase: хлебные крошки в стиле проводника Windows #}
-{# Формат: Все объекты > Проект «Название» > Корпус «Название» > Этаж «Название»; по клику — выпадающий список соседей #}
+{# Формат: Все объекты > Проект «Название» > Строение «Название» > Этаж «Название»; по клику — выпадающий список соседей #}
 <div class="stroybase-breadcrumb bg-white border-bottom shadow-sm sticky-top">
     <div class="container-fluid py-2">
         <nav aria-label="breadcrumb">
@@ -54,7 +54,7 @@
                     {% if g_floor %}
                     <div class="dropdown">
                         <a class="breadcrumb-link dropdown-toggle text-decoration-none text-dark" href="#" data-bs-toggle="dropdown" aria-expanded="false" id="breadcrumb-buildings">
-                            Корпус «{{ g_building.name|truncate(25) }}»
+                            Строение «{{ g_building.name|truncate(25) }}»
                         </a>
                         <ul class="dropdown-menu dropdown-menu-start" aria-labelledby="breadcrumb-buildings">
                             {% for b in g_buildings or [] %}
@@ -65,7 +65,7 @@
                         </ul>
                     </div>
                     {% else %}
-                    <span class="text-dark fw-bold" aria-current="page">Корпус «{{ g_building.name|truncate(25) }}»</span>
+                    <span class="text-dark fw-bold" aria-current="page">Строение «{{ g_building.name|truncate(25) }}»</span>
                     {% endif %}
                 </li>
                 {% endif %}

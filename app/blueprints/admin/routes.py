@@ -1,4 +1,5 @@
 # app/blueprints/admin/routes.py
+from collections import Counter
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from functools import wraps
@@ -17,7 +18,7 @@ from . import bp
 
 
 def _update_schedule_works_building_id(building_id, new_building_id):
-    """Обновить building_id в schedule_works через raw SQL (в БД может отсутствовать столбец project_id)."""
+    """Обновить building_id в schedule_works через raw SQL (в БД может отсутствовать project_id)."""
     try:
         if new_building_id is None:
             db.session.execute(
@@ -120,13 +121,13 @@ def user_delete(user_id):
     return redirect(url_for("admin.user_list"))
 
 
-# ---------- Корпуса: список и ручное удаление / переназначение ----------
+# ---------- Строения: список и ручное удаление / переназначение ----------
 
 
 @bp.route("/buildings")
 @admin_required
 def buildings_list():
-    """Список всех корпусов: проект, название, этажей, движений, дата, примечание. Сортировка по project_id, name."""
+    """Список строений: проект, название, этажей, движений, дата. Сортировка по project_id, name."""
     buildings = Building.query.order_by(Building.project_id, Building.name).all()
     rows = []
     for b in buildings:
@@ -148,20 +149,18 @@ def buildings_list():
                 "same_project_names": [x.name for x in same_project],
             }
         )
-    from collections import Counter
-
     project_counts = Counter(b.project_id for b in buildings)
     projects_with_many = [pid for pid, c in project_counts.items() if c > 10]
     return render_template(
         "admin/buildings/index.html",
         rows=rows,
         projects_with_many_buildings=projects_with_many,
-        title="Корпуса",
+        title="Строения",
     )
 
 
 def _reassign_building_fks(building_id, target_building_id):
-    """Переназначить все FK с building_id на target_building_id. Не удаляет корпус."""
+    """Переназначить все FK с building_id на target_building_id. Не удаляет строение."""
     Floor.query.filter(Floor.building_id == building_id).update(
         {Floor.building_id: target_building_id}, synchronize_session=False
     )
@@ -180,7 +179,7 @@ def _reassign_building_fks(building_id, target_building_id):
 
 
 def _delete_building_cascade(building_id):
-    """Удалить корпус полностью: обнулить building_id у документов/движений/графика, удалить этажи и корпус."""
+    """Удалить строение: обнулить building_id у документов/движений/графика, удалить этажи."""
     Document.query.filter(Document.building_id == building_id).update(
         {Document.building_id: None}, synchronize_session=False
     )
@@ -201,14 +200,14 @@ def _delete_building_cascade(building_id):
 @bp.route("/buildings/<int:building_id>/delete", methods=["POST"])
 @admin_required
 def building_delete(building_id):
-    """Удалить корпус полностью (каскад: этажи и связи обнуляются или удаляются)."""
+    """Удалить строение полностью (каскад: этажи и связи обнуляются или удаляются)."""
     building = Building.query.get_or_404(building_id)
     building_name = building.name
     try:
         _delete_building_cascade(building_id)
         db.session.commit()
         flash(
-            f"Корпус «{building_name}» удалён. Этажи и связи по корпусу удалены.",
+            f"Строение «{building_name}» удалено. Этажи и связи по строению удалены.",
             "success",
         )
     except Exception as e:
@@ -220,15 +219,21 @@ def building_delete(building_id):
 @bp.route("/buildings/<int:building_id>/reassign", methods=["POST"])
 @admin_required
 def building_reassign(building_id):
-    """Переназначить все связи корпуса на другой корпус того же проекта, затем удалить корпус."""
+    """Переназначить связи строения на другое того же проекта, затем удалить строение."""
     building = Building.query.get_or_404(building_id)
     target_id = request.form.get("target_building_id", type=int)
     if not target_id or target_id == building_id:
-        flash("Выберите другой корпус того же проекта для переназначения.", "danger")
+        flash(
+            "Выберите другое строение того же проекта для переназначения.",
+            "danger",
+        )
         return redirect(url_for("admin.buildings_list"))
     target = Building.query.get(target_id)
     if not target or target.project_id != building.project_id:
-        flash("Корпус назначения должен относиться к тому же проекту.", "danger")
+        flash(
+            "Строение назначения должно относиться к тому же проекту.",
+            "danger",
+        )
         return redirect(url_for("admin.buildings_list"))
     building_name, target_name = building.name, target.name
     try:
@@ -238,7 +243,7 @@ def building_reassign(building_id):
         )
         db.session.commit()
         flash(
-            f"Корпус «{building_name}» удалён. Связи переназначены на «{target_name}».",
+            f"Строение «{building_name}» удалено. Связи переназначены на «{target_name}».",
             "success",
         )
     except Exception as e:
@@ -253,17 +258,18 @@ def building_reassign(building_id):
 @bp.route("/works/reset_all", methods=["POST"])
 @admin_required
 def reset_all_works():
-    """Полностью очистить таблицы works и work_progress (объёмы и ежедневное выполнение по всем объектам).
+    """Полностью очистить таблицы works и work_progress (объёмы и выполнение по объектам).
 
-    Структура таблиц и связи остаются, удаляются только данные. Использовать ТОЛЬКО
-    осознанно: действие необратимо, восстановление возможно только из резервной копии БД.
+    Структура таблиц остаётся, удаляются только данные. Использовать ТОЛЬКО осознанно:
+    действие необратимо, восстановление возможно только из резервной копии БД.
     """
     try:
         db.session.execute(text("DELETE FROM work_progress"))
         db.session.execute(text("DELETE FROM works"))
         db.session.commit()
         flash(
-            "Все работы и ежедневное выполнение по объектам удалены. Таблицы works и work_progress очищены.",
+            "Все работы и ежедневное выполнение по объектам удалены. "
+            "Таблицы works и work_progress очищены.",
             "success",
         )
     except Exception as e:

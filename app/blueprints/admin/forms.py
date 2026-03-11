@@ -1,7 +1,7 @@
 # app/blueprints/admin/forms.py
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SelectField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Length, Optional
+from wtforms.validators import DataRequired, Length
 
 
 class UserForm(FlaskForm):

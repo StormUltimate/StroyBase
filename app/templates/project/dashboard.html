@@ -13,8 +13,8 @@
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal" aria-label="Загрузить фото и документы">
                         <i class="bi bi-upload me-2"></i>Загрузить фото/документы
                     </button>
-                    <a href="{{ url_for('buildings.create_building', project_id=project.id) }}" class="btn btn-outline-primary" aria-label="Добавить корпус">
-                        <i class="bi bi-plus-lg me-1"></i>Добавить корпус
+                    <a href="{{ url_for('buildings.create_building', project_id=project.id) }}" class="btn btn-outline-primary" aria-label="Добавить строение">
+                        <i class="bi bi-plus-lg me-1"></i>Добавить строение
                     </a>
                 </div>
                 <div class="text-muted small">
@@ -62,9 +62,9 @@
                     </div>
                     <form method="get" action="{{ url_for('project.dashboard', project_id=project.id) }}#media" class="row g-2 mb-4 p-3 bg-light rounded">
                         <div class="col-md-2">
-                            <label class="form-label small">Корпус</label>
+                            <label class="form-label small">Строение</label>
                             <select name="building_id" id="media-building-filter" class="form-select form-select-sm">
-                                <option value="">Все корпуса</option>
+                                <option value="">Все строения</option>
                                 {% for b in buildings %}
                                 <option value="{{ b.id }}" {% if request.args.get('building_id')|string == b.id|string %}selected{% endif %}>{{ b.name }}</option>
                                 {% endfor %}
@@ -121,9 +121,9 @@
                     <h4>Документы проекта</h4>
                     <form method="get" action="{{ url_for('project.dashboard', project_id=project.id) }}#docs" class="row g-2 mb-4 p-3 bg-light rounded">
                         <div class="col-md-2">
-                            <label class="form-label small">Корпус</label>
+                            <label class="form-label small">Строение</label>
                             <select name="building_id" id="docs-building-filter" class="form-select form-select-sm">
-                                <option value="">Все корпуса</option>
+                                <option value="">Все строения</option>
                                 {% for b in buildings %}
                                 <option value="{{ b.id }}" {% if request.args.get('building_id')|string == b.id|string %}selected{% endif %}>{{ b.name }}</option>
                                 {% endfor %}
@@ -169,7 +169,7 @@
                                     <th>Название</th>
                                     <th>Описание</th>
                                     <th>Вид документа</th>
-                                    <th>Корпус</th>
+                                    <th>Строение</th>
                                     <th>Этаж</th>
                                     <th>Дата</th>
                                     <th class="text-end small text-muted">Размер, КБ</th>
@@ -225,9 +225,9 @@
                             <div class="card h-100">
                                 <div class="card-body">
                                     <h6 class="card-title mb-2">Базовые характеристики объекта</h6>
-                                    <p class="text-muted small mb-3">Краткая сводка по корпусам и площадям.</p>
+                                    <p class="text-muted small mb-3">Краткая сводка по строениям и площадям.</p>
                                     <dl class="row mb-0 small">
-                                        <dt class="col-7">Корпусов в объекте</dt>
+                                        <dt class="col-7">Строений в объекте</dt>
                                         <dd class="col-5 text-end">{{ buildings|length }}</dd>
                                         <dt class="col-7 mt-2">Этажей всего</dt>
                                         <dd class="col-5 text-end mt-2">
@@ -473,7 +473,7 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Корпус</label>
+                            <label class="form-label">Строение</label>
                             <select name="building_id" id="schedule-building-select" class="form-select">
                                 <option value="">— Без привязки (объект целиком) —</option>
                                 {% for b in buildings %}
@@ -495,7 +495,7 @@
                         </div>
                     </div>
                     <p class="text-muted small mb-0">
-                        Если корпус и этаж не выбраны, работа считается общей для всего объекта.
+                        Если строение и этаж не выбраны, работа считается общей для всего объекта.
                     </p>
                 </div>
                 <div class="modal-footer">
@@ -552,7 +552,7 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Корпус</label>
+                            <label class="form-label">Строение</label>
                             <select name="building_id" id="plan-task-building" class="form-select">
                                 <option value="">— не выбран —</option>
                                 {% for b in buildings %}
@@ -628,7 +628,7 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Корпус</label>
+                            <label class="form-label">Строение</label>
                             <select name="building_id" id="editPlanTaskBuilding" class="form-select">
                                 <option value="">— не выбран —</option>
                                 {% for b in buildings %}
@@ -975,7 +975,7 @@ document.addEventListener('DOMContentLoaded', function () {
         collectRecordsAndSave('nightShiftModalBody', 'night', 'nightShiftModalCsrf', 'saveNightShiftBtn');
     });
 
-    // Этажи проекта сгруппированы по корпусу (для фильтров и модалки загрузки)
+    // Этажи проекта сгруппированы по строению (для фильтров и модалки загрузки)
     var floorsByBuilding = {};
     {% for f in project_floors or [] %}
     if (!floorsByBuilding[{{ f.building_id }}]) { floorsByBuilding[{{ f.building_id }}] = []; }
@@ -1030,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var buildingSelect = uploadForm.querySelector('select[name="building_id"]');
         var floorSelect = uploadForm.querySelector('select[name="floor_id"]');
 
-        // Корпуса для объекта
+        // Строения для объекта
         if (buildingSelect) {
             buildingSelect.innerHTML = '<option value="">Общие для объекта</option>';
             {% for building in buildings %}
@@ -1044,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', function () {
             floorSelect.innerHTML = '';
             var baseOption = document.createElement('option');
             baseOption.value = '';
-            baseOption.textContent = bId ? 'Общие для выбранного корпуса' : 'Общие для объекта';
+            baseOption.textContent = bId ? 'Общие для выбранного строения' : 'Общие для объекта';
             floorSelect.appendChild(baseOption);
             if (bId && floorsByBuilding[bId]) {
                 floorsByBuilding[bId].forEach(function (f) {
@@ -1062,7 +1062,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Каскадный выбор корпуса/этажа в модалке добавления работы в график объекта
+    // Каскадный выбор строения/этажа в модалке добавления работы в график объекта
     (function () {
         var bSel = document.getElementById('schedule-building-select');
         var fSel = document.getElementById('schedule-floor-select');
@@ -1086,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fillScheduleFloors();
     })();
 
-    // Каскад корпус/этаж в модалке «Добавить задачу» (ГПП)
+    // Каскад строение/этаж в модалке «Добавить задачу» (ГПП)
     (function () {
         var bSel = document.getElementById('plan-task-building');
         var fSel = document.getElementById('plan-task-floor');

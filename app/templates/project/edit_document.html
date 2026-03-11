@@ -11,7 +11,7 @@
     <div class="mb-3">
         <span class="badge bg-light text-muted me-2">Проект: {{ project.name }}</span>
         {% if building %}
-        <span class="badge bg-light text-muted me-2">Корпус: {{ building.name }}</span>
+        <span class="badge bg-light text-muted me-2">Строение: {{ building.name }}</span>
         {% endif %}
         {% if floor %}
         <span class="badge bg-light text-muted">Этаж: {{ floor.name }}</span>
@@ -41,9 +41,9 @@
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label">Корпус</label>
+                    <label class="form-label">Строение</label>
                     <select name="building_id" class="form-select">
-                        <option value="">— Без корпуса —</option>
+                        <option value="">— Без строения —</option>
                         {% for b in buildings %}
                         <option value="{{ b.id }}" {% if doc.building_id == b.id %}selected{% endif %}>{{ b.name }}</option>
                         {% endfor %}
@@ -59,7 +59,7 @@
                         </option>
                         {% endfor %}
                     </select>
-                    <small class="form-text text-muted">При выборе этажа корпус подставится автоматически по этажу.</small>
+                    <small class="form-text text-muted">При выборе этажа строение подставится автоматически по этажу.</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Виды работ / теги</label>

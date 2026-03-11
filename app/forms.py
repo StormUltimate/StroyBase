@@ -1,5 +1,5 @@
 # app/forms.py — StroyBase
-# Формы: проекты, корпуса, этажи, материалы, документы. SelectField с пустыми значениями — coerce в None.
+# Формы: проекты, строения, этажи, материалы, документы. SelectField с пустыми значениями — coerce в None.
 
 from flask_wtf import FlaskForm
 from wtforms import (
@@ -189,7 +189,7 @@ class MaterialMovementForm(FlaskForm):
         validators=[DataRequired(message="Выберите проект")],
     )
     building_id = SelectField(
-        "Корпус", coerce=_coerce_int_optional, validators=[Optional()]
+        "Строение", coerce=_coerce_int_optional, validators=[Optional()]
     )
     floor_id = SelectField("Этаж", coerce=_coerce_int_optional, validators=[Optional()])
     material_name = StringField(
@@ -292,11 +292,11 @@ class OrderForm(FlaskForm):
 
 
 class ScheduleWorkForm(FlaskForm):
-    """Форма работы в графике (для уровня проекта/корпуса). Корпус и этаж — опциональны."""
+    """Форма работы в графике (для уровня проекта/строения). Строение и этаж — опциональны."""
 
     project_id = IntegerField("Проект (объект)", validators=[Optional()])
     building_id = SelectField(
-        "Корпус", coerce=_coerce_int_optional, validators=[Optional()]
+        "Строение", coerce=_coerce_int_optional, validators=[Optional()]
     )
     floor_id = SelectField("Этаж", coerce=_coerce_int_optional, validators=[Optional()])
     name = TextAreaField(

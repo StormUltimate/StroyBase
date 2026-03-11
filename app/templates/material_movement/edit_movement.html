@@ -213,7 +213,7 @@
             .then(function(arr) {
                 var list = Array.isArray(arr) ? arr : [];
                 var opts = [emptyOption].concat(list.map(function(b) {
-                    return { value: String(b.id), text: (b.name || 'Корпус ' + b.id).trim() };
+                    return { value: String(b.id), text: (b.name || 'Строение ' + b.id).trim() };
                 }));
                 setOptions(buildingSelect, opts);
                 if (selectBuildingId && list.some(function(b) { return b.id == selectBuildingId; }))

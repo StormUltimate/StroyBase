@@ -43,7 +43,7 @@ def _parse_args():
         "--restore-prefixes",
         action="store_true",
         default=True,
-        help="Восстанавливать известные сломанные префиксы (а гб N → Корпус N, аж N → Этаж N). (по умолчанию: вкл.)",
+        help="Восстанавливать известные сломанные префиксы (а гб N → Строение N, аж N → Этаж N). (по умолчанию: вкл.)",
     )
     parser.add_argument(
         "--no-restore-prefixes",
@@ -143,12 +143,12 @@ def run(
             log(f"Всего buildings: {total_b}, floors: {total_f}")
 
             # В памяти считаем, сколько зданий/этажей будет удалено после санитизации и дедупликации
-            # 1) Санитизированные имена (для подсчёта дублей); при restore_prefixes — восстановление «Корпус N»/«Этаж N»
+            # 1) Санитизированные имена (для подсчёта дублей); при restore_prefixes — восстановление «Строение N»/«Этаж N»
             def safe_name_b(b):
                 raw = b.name
                 if raw is None or (isinstance(raw, str) and not raw.strip()):
-                    return f"Корпус {b.id}"
-                cleaned = normalize_name(raw, f"Корпус {b.id}")
+                    return f"Строение {b.id}"
+                cleaned = normalize_name(raw, f"Строение {b.id}")
                 if restore_prefixes:
                     restored = restore_known_patterns(cleaned, "building", b.id)
                     if restored is not None:
@@ -261,7 +261,7 @@ def run(
             building_groups = defaultdict(list)
             for b in buildings:
                 name_for_key = (
-                    safe_name_b(b) if dry_run else (b.name or f"Корпус {b.id}")
+                    safe_name_b(b) if dry_run else (b.name or f"Строение {b.id}")
                 )
                 key = (b.project_id, normalized_key_for_dedup(name_for_key))
                 building_groups[key].append(b.id)
@@ -401,7 +401,7 @@ def run(
                 if not name or len(name.strip()) < 3:
                     return False
                 s = name.strip()
-                if s.startswith("Корпус ") or s.startswith("Этаж "):
+                if s.startswith("Строение ") or s.startswith("Этаж "):
                     return True
                 return any(c.isalpha() for c in s)
 
@@ -427,7 +427,7 @@ def run(
                     )
                 if not bad_b and not bad_f:
                     log(
-                        "  Все названия buildings и floors проходят проверку (длина >= 3, есть буквы или префикс «Корпус»/«Этаж»)."
+                        "  Все названия buildings и floors проходят проверку (длина >= 3, есть буквы или префикс «Строение»/«Этаж»)."
                     )
 
             log(f"Лог сохранён: {log_path}")

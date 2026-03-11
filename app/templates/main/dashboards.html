@@ -19,7 +19,7 @@
         <div class="tab-pane fade show active" id="dash-people">
             <h5 class="mb-3">KPI по объектам (люди и выполнение работ)</h5>
             <p class="text-muted small mb-3">
-                Сводка по ключевым показателям: средний % выполнения работ по объекту (по данным раздела «Работы по корпусу»)
+                Сводка по ключевым показателям: средний % выполнения работ по объекту (по данным раздела «Работы по строению»)
                 и суммарная нагрузка по людям (по данным учёта DailyWorkforce). Всё на одной панели, без переходов.
             </p>
             {% if projects %}
@@ -133,16 +133,20 @@
         <div class="tab-pane fade" id="dash-schedules">
             <h5 class="mb-3">Демонстрационный график производства работ (ГПР)</h5>
             <p class="text-muted small mb-3">
-                Ниже показан пример диаграммы ГПР в стиле типового Excel‑шаблона: подготовка, демонтаж по корпусам, благоустройство и завершение.
+                Ниже показан пример диаграммы ГПР в стиле типового Excel‑шаблона: подготовка, демонтаж по строениям, благоустройство и завершение.
                 Для реальных объектов детальный план ведётся на дашборде проекта во вкладке «Сводка по объёмам работ» / ГПП.
             </p>
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="small text-muted">Пример для показа — тестовые даты и задачи</span>
-                        <a href="{{ url_for('project.dashboard', project_id=projects[0].id) }}#project-graphs" class="btn btn-outline-primary btn-sm" {% if not projects %}disabled aria-disabled="true"{% endif %}>
+                        {% if projects %}
+                        <a href="{{ url_for('project.dashboard', project_id=projects[0].id) }}#project-graphs" class="btn btn-outline-primary btn-sm">
                             Открыть план работ первого объекта
                         </a>
+                        {% else %}
+                        <span class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">Открыть план работ первого объекта</span>
+                        {% endif %}
                     </div>
                     <div class="border rounded p-2 bg-white">
                         <div class="mermaid" id="demo-gpr-gantt">
@@ -155,7 +159,7 @@ gantt
     Открытие ордеров и ППР      :p1, 2024-07-01, 7d
     Подготовительные мероприятия:after p1, 7d
 
-    section Демонтаж корпусов
+    section Демонтаж строений
     Демонтаж корп. 1           :d1, 2024-07-15, 20d
     Демонтаж корп. 2           :after d1, 18d
     Демонтаж корп. 3           :after d1, 22d

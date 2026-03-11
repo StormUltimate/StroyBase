@@ -1140,7 +1140,7 @@ def edit_photo(photo_id):
         # Признак «скан документа» (изображение должно вести себя как документ)
         doc.is_document_image = True if request.form.get("is_document_image") else False
 
-        # Привязка к корпусу и этажу (перемещение фото)
+        # Привязка к строению и этажу (перемещение фото)
         building_id = request.form.get("building_id", type=int)
         floor_id = request.form.get("floor_id", type=int)
 
@@ -1149,7 +1149,7 @@ def edit_photo(photo_id):
         if building_id:
             new_building = Building.query.get_or_404(building_id)
             if project and new_building.project_id != project.id:
-                flash("Выбранный корпус не принадлежит текущему объекту", "danger")
+                flash("Выбранное строение не принадлежит текущему объекту", "danger")
                 return redirect(url_for("floors.edit_photo", photo_id=photo_id))
         if floor_id:
             new_floor = Floor.query.get_or_404(floor_id)

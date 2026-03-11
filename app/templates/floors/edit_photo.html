@@ -41,15 +41,15 @@
                                 <div class="form-control-plaintext small text-muted">{{ floor.name }}</div>
                             </div>
                             <div class="mb-2">
-                                <label class="form-label mb-0">Текущий корпус</label>
+                                <label class="form-label mb-0">Текущее строение</label>
                                 <div class="form-control-plaintext small text-muted">
                                     {{ floor.building.name if floor.building else '—' }}
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Перенести в корпус</label>
+                                <label class="form-label">Перенести в строение</label>
                                 <select name="building_id" class="form-select form-select-sm">
-                                    <option value="">Оставить в текущем корпусе</option>
+                                    <option value="">Оставить в текущем строении</option>
                                     {% for b in buildings %}
                                     <option value="{{ b.id }}" {% if doc.building_id == b.id %}selected{% endif %}>{{ b.name }}</option>
                                     {% endfor %}
@@ -65,7 +65,7 @@
                                     </option>
                                     {% endfor %}
                                 </select>
-                                <small class="form-text text-muted">При выборе этажа корпус подставится автоматически по этажу.</small>
+                                <small class="form-text text-muted">При выборе этажа строение подставится автоматически по этажу.</small>
                             </div>
                             <div class="mb-3">
                         <label class="form-label">Название</label>

@@ -8,10 +8,10 @@ _RE_ALLOWED = re.compile(r"[а-яА-ЯёЁa-zA-Z0-9\s\-.,()\/№]+", re.UNICODE)
 _MIN_LENGTH = 2
 _JUNK_ONLY_DIGITS = re.compile(r"^[\d\s\-.,()\/]+$")
 
-# Шаблоны сломанных префиксов (после санитизации): «Корпус» / «Этаж» в неправильной кодировке или латиницей.
+# Шаблоны сломанных префиксов (после санитизации): «Строение» / «Этаж» в неправильной кодировке или латиницей.
 # Результат санитизации «Љ®аЇгб 6» → «а гб 6» (кириллица а, г, б проходят regex).
 _RE_BROKEN_KORPUS = re.compile(
-    r"^(?:а\s*г\s*б|а\s*гб|jb\s*@?\s*air|korpus|корпус)\s*(\d*)\s*$", re.UNICODE
+    r"^(?:а\s*г\s*б|а\s*гб|jb\s*@?\s*air|korpus|корпус|stroenie|строение)\s*(\d*)\s*$", re.UNICODE
 )
 _RE_BROKEN_ETAZH = re.compile(
     r"^(?:т\s*аж|аж|этаж|etazh)\s*(\d*)\s*$", re.IGNORECASE | re.UNICODE
@@ -48,11 +48,11 @@ def normalize_name(s, fallback=""):
 
 def restore_known_patterns(cleaned_name, prefix_type, entity_id=None):
     """
-    Восстановление известных сломанных префиксов «Корпус N» / «Этаж N» после санитизации.
+    Восстановление известных сломанных префиксов «Строение N» / «Этаж N» после санитизации.
     cleaned_name — уже результат normalize_name (или строка после удаления мусора).
     prefix_type — 'building' или 'floor'.
     entity_id — id записи (building.id / floor.id), подставляется, если в строке нет числа.
-    Возвращает восстановленную строку (например, «Корпус 6») или None, если шаблон не подошёл.
+    Возвращает восстановленную строку (например, «Строение 6») или None, если шаблон не подошёл.
     """
     if not cleaned_name or not isinstance(cleaned_name, str):
         return None
@@ -65,7 +65,7 @@ def restore_known_patterns(cleaned_name, prefix_type, entity_id=None):
         if m:
             num = m.group(1).strip()
             n = int(num) if num else (entity_id if entity_id is not None else None)
-            return f"Корпус {n}" if n is not None else "Корпус"
+            return f"Строение {n}" if n is not None else "Строение"
     elif prefix_type == "floor":
         m = _RE_BROKEN_ETAZH.match(s)
         if m:

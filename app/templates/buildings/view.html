@@ -1,4 +1,4 @@
-<!-- StroyBase: вид корпуса — наследует shared/object_view.html -->
+<!-- StroyBase: вид строения — наследует shared/object_view.html -->
 {% extends "shared/object_view.html" %}
 
 {% block back_button %}
@@ -21,12 +21,12 @@
 <a href="{{ url_for('floors.create_floor', building_id=building.id) }}" class="btn btn-outline-primary btn-sm" aria-label="Добавить этаж">
     <i class="bi bi-plus-lg me-1"></i>Добавить этаж
 </a>
-<a href="{{ url_for('buildings.edit_building', building_id=building.id) }}" class="btn btn-warning btn-sm" aria-label="Редактировать корпус">
+<a href="{{ url_for('buildings.edit_building', building_id=building.id) }}" class="btn btn-warning btn-sm" aria-label="Редактировать строение">
     Редактировать
 </a>
-<form action="{{ url_for('buildings.delete_building', building_id=building.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Удалить корпус «{{ building.name }}»? Все этажи, фото, видео и документы будут удалены.');">
+<form action="{{ url_for('buildings.delete_building', building_id=building.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Удалить строение «{{ building.name }}»? Все этажи, фото, видео и документы будут удалены.');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-    <button type="submit" class="btn btn-danger btn-sm" aria-label="Удалить корпус">Удалить</button>
+    <button type="submit" class="btn btn-danger btn-sm" aria-label="Удалить строение">Удалить</button>
 </form>
 {% endblock %}
 
@@ -34,7 +34,7 @@
 <p class="text-muted small mb-4">{{ building.building_class or '—' }} · {{ building.work_type or '—' }}</p>
 {% endblock %}
 
-{% block page_title %}Корпус «{{ building.name }}»{% endblock %}
+{% block page_title %}Строение «{{ building.name }}»{% endblock %}
 
 {% block object_banner %}{% endblock %}
 
@@ -63,7 +63,7 @@
 <!-- Фото и видео -->
 <div class="tab-pane fade" id="media">
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <h4 class="mb-0">Фото и видео корпуса</h4>
+        <h4 class="mb-0">Фото и видео строения</h4>
     </div>
     <form method="get" action="{{ url_for('buildings.view_building', building_id=building.id) }}#media" class="row g-2 mb-4 p-3 bg-light rounded">
         <div class="col-md-2">
@@ -127,21 +127,21 @@
     {% include 'shared/document_tab.html' with context %}
 </div>
 
-<!-- Сводка по объёмам работ: только сводка (план/факт) и таблица «Работы по корпусу» -->
+<!-- Сводка по объёмам работ: только сводка (план/факт) и таблица «Работы по строению» -->
 <div class="tab-pane fade show active" id="schedules">
     {% include 'buildings/building_graphs.html' %}
 </div>
 
 <!-- Тех. информация -->
 <div class="tab-pane fade" id="tech">
-    <h4 class="mb-3">Техническая информация корпуса</h4>
+    <h4 class="mb-3">Техническая информация строения</h4>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-title mb-2">Базовые характеристики</h6>
-                    <p class="text-muted small mb-3">Суммарные площади по этажам корпуса.</p>
+                    <p class="text-muted small mb-3">Суммарные площади по этажам строения.</p>
                     <dl class="row mb-0 small">
                         <dt class="col-7">Количество этажей</dt>
                         <dd class="col-5 text-end">{{ floors|length }}</dd>
@@ -153,7 +153,7 @@
                                 не указана
                             {% endif %}
                         </dd>
-                        <dt class="col-7 mt-2">Площадь корпуса (паспортная)</dt>
+                        <dt class="col-7 mt-2">Площадь строения (паспортная)</dt>
                         <dd class="col-5 text-end mt-2">
                             {% if building.total_area_m2 is not none %}
                                 {{ building.total_area_m2|round(2) }} м²
@@ -171,7 +171,7 @@
         <div class="col-md-8">
             <div class="card h-100">
                 <div class="card-body">
-                    <h6 class="card-title mb-2">Сводка материалов по корпусу</h6>
+                    <h6 class="card-title mb-2">Сводка материалов по строению</h6>
                     {% if building_material_summary %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0">
@@ -220,7 +220,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted mb-0">Сводка пуста — по этажам корпуса пока не заведены материалы.</p>
+                    <p class="text-muted mb-0">Сводка пуста — по этажам строения пока не заведены материалы.</p>
                     {% endif %}
                 </div>
             </div>
@@ -231,7 +231,7 @@
         <div class="col-md-12">
             <div class="card h-100">
                 <div class="card-body">
-                    <h6 class="card-title mb-2">Площади и величины по корпусу</h6>
+                    <h6 class="card-title mb-2">Площади и величины по строению</h6>
                     {% if building_quantities_summary %}
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0">
@@ -260,7 +260,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted mb-0">Сводка пуста — по этажам корпуса пока не заведены площади и величины.</p>
+                    <p class="text-muted mb-0">Сводка пуста — по этажам строения пока не заведены площади и величины.</p>
                     {% endif %}
                 </div>
             </div>
@@ -275,7 +275,7 @@
             <i class="bi bi-chevron-right"></i>
         </a>
         {% else %}
-        <div class="alert alert-info mb-0">В корпусе пока нет этажей. Добавьте этаж, чтобы вести материалы и тех. информацию.</div>
+        <div class="alert alert-info mb-0">В строении пока нет этажей. Добавьте этаж, чтобы вести материалы и тех. информацию.</div>
         {% endfor %}
     </div>
 </div>
@@ -291,7 +291,7 @@
             <i class="bi bi-chevron-right"></i>
         </a>
         {% else %}
-        <div class="alert alert-info">В корпусе пока нет этажей.</div>
+        <div class="alert alert-info">В строении пока нет этажей.</div>
         {% endfor %}
     </div>
 </div>
@@ -300,7 +300,7 @@
 {% block content_after_tabs %}{% endblock %}
 
 {% block modals %}
-<!-- Модальное окно загрузки документов корпуса -->
+<!-- Модальное окно загрузки документов строения -->
 <div class="modal fade" id="uploadModalBuilding" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -318,7 +318,7 @@
                     <div class="mb-3">
                         <label class="form-label">Привязать к этажу (опционально)</label>
                         <select name="floor_id" class="form-select">
-                            <option value="">Общие документы корпуса</option>
+                            <option value="">Общие документы строения</option>
                             {% for floor in floors %}
                             <option value="{{ floor.id }}">{{ floor.name }}</option>
                             {% endfor %}

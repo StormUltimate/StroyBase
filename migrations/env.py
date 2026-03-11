@@ -10,8 +10,13 @@ from app.extensions import db
 
 config = context.config
 
+# Загружаем логирование только если конфиг содержит нужные секции
+# (Flask-Migrate может передать конфиг без [formatters]/[handlers]/[loggers])
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    try:
+        fileConfig(config.config_file_name)
+    except (KeyError, Exception):
+        pass
 
 
 app = create_app()

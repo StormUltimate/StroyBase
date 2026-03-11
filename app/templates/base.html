@@ -99,7 +99,7 @@
 
     <div class="flex-grow-1" style="margin-left: 280px;">
 
-        <!-- Хлебные крошки в стиле проводника (Все объекты > Проект > Корпус > Этаж) -->
+        <!-- Хлебные крошки в стиле проводника (Все объекты > Проект > Строение > Этаж) -->
         {% include 'shared/breadcrumb.html' %}
 
         <div class="container-fluid py-4">
@@ -195,7 +195,7 @@
                 <div class="modal-body">
                     {% if g_project %}
                     <div class="mb-3">
-                        <label class="form-label">Корпус</label>
+                        <label class="form-label">Строение</label>
                         <select name="building_id" class="form-select">
                             <option value="">Общие для объекта</option>
                         </select>
@@ -203,14 +203,14 @@
                     <div class="mb-3">
                         <label class="form-label">Этаж</label>
                         <select name="floor_id" class="form-select">
-                            <option value="">Общие для корпуса / объекта</option>
+                            <option value="">Общие для строения / объекта</option>
                         </select>
                     </div>
                     {% elif floors %}
                     <div class="mb-3">
                         <label class="form-label">Привязать к этажу</label>
                         <select name="floor_id" class="form-select">
-                            <option value="">Общие для корпуса</option>
+                            <option value="">Общие для строения</option>
                             {% for floor in floors %}
                             <option value="{{ floor.id }}">{{ floor.name }}</option>
                             {% endfor %}
@@ -253,7 +253,7 @@
                     <div class="mb-3">
                         <label class="form-label">Привязать к этажу</label>
                         <select name="floor_id" class="form-select">
-                            <option value="">Общие для корпуса</option>
+                            <option value="">Общие для строения</option>
                             {% for floor in floors %}
                             <option value="{{ floor.id }}">{{ floor.name }}</option>
                             {% endfor %}

@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <h2 class="mb-4">Добавить корпус в объект «{{ project.name }}»</h2>
+    <h2 class="mb-4">Добавить строение в объект «{{ project.name }}»</h2>
     <a href="{{ url_for('project.dashboard', project_id=project.id) }}" class="btn btn-secondary mb-3">
         <i class="bi bi-arrow-left"></i> Назад к объекту
     </a>
@@ -11,10 +11,10 @@
         <form method="POST" action="{{ url_for('project.create_building', project_id=project.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="mb-3">
-                <label class="form-label">Название корпуса <span class="text-danger">*</span></label>
-                <input type="text" name="name" class="form-control" required placeholder="например, Корпус 1">
+                <label class="form-label">Название строения <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" required placeholder="например, Строение 1, Дом 2">
             </div>
-            <button type="submit" class="btn btn-primary">Создать корпус</button>
+            <button type="submit" class="btn btn-primary">Создать строение</button>
             <a href="{{ url_for('project.dashboard', project_id=project.id) }}" class="btn btn-secondary">Отмена</a>
         </form>
     </div>

@@ -1,11 +1,14 @@
 """Initial database schema for StroyBase.
 
 This migration reflects the current SQLAlchemy models in app/models.py.
+Creates default admin user (login=admin, password=admin) for first run.
 """
 from __future__ import annotations
 
+import bcrypt
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 
 revision = "0001_initial_schema"
@@ -15,30 +18,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Association tables
-    op.create_table(
-        "document_work_types",
-        sa.Column("document_id", sa.Integer(), sa.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("doc_type_id", sa.Integer(), sa.ForeignKey("doc_types.id", ondelete="CASCADE"), primary_key=True),
-    )
-
-    op.create_table(
-        "material_documents",
-        sa.Column("material_id", sa.Integer(), sa.ForeignKey("floor_materials.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("document_id", sa.Integer(), sa.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("doc_type", sa.String(length=50), nullable=True),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("is_main", sa.Boolean(), nullable=True, server_default=sa.text("false")),
-        sa.Column("uploaded_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
-        sa.Column("order", sa.Integer(), nullable=False, server_default="0"),
-    )
-
-    op.create_table(
-        "order_documents",
-        sa.Column("order_id", sa.Integer(), sa.ForeignKey("orders.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("document_id", sa.Integer(), sa.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
-    )
-
+    # Порядок создания: сначала базовые таблицы, затем зависимые (по FK).
     # Core hierarchy: Project, Building, Floor
     op.create_table(
         "projects",
@@ -90,7 +70,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(length=120), nullable=True),
     )
 
-    # Doc types and documents
+    # Doc types
     op.create_table(
         "doc_types",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -98,6 +78,29 @@ def upgrade() -> None:
         sa.Column("sort_order", sa.Integer(), nullable=True, server_default="100"),
     )
 
+    # Plans and marks (documents ссылается на marks)
+    op.create_table(
+        "plans",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("floor_id", sa.Integer(), sa.ForeignKey("floors.id"), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=True),
+        sa.Column("image_path", sa.String(length=255), nullable=True),
+        sa.Column("uploaded_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
+        sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
+    )
+
+    op.create_table(
+        "marks",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("plan_id", sa.Integer(), sa.ForeignKey("plans.id"), nullable=False),
+        sa.Column("floor_id", sa.Integer(), sa.ForeignKey("floors.id"), nullable=True),
+        sa.Column("x", sa.Float(), nullable=True),
+        sa.Column("y", sa.Float(), nullable=True),
+        sa.Column("note", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
+    )
+
+    # Documents (после plans, marks)
     op.create_table(
         "documents",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -123,26 +126,11 @@ def upgrade() -> None:
         sa.Column("contract_status", sa.String(length=100), nullable=True),
     )
 
-    # Plans and marks
+    # Association: document_work_types (после documents, doc_types)
     op.create_table(
-        "plans",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("floor_id", sa.Integer(), sa.ForeignKey("floors.id"), nullable=False),
-        sa.Column("name", sa.String(length=255), nullable=True),
-        sa.Column("image_path", sa.String(length=255), nullable=True),
-        sa.Column("uploaded_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
-        sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
-    )
-
-    op.create_table(
-        "marks",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("plan_id", sa.Integer(), sa.ForeignKey("plans.id"), nullable=False),
-        sa.Column("floor_id", sa.Integer(), sa.ForeignKey("floors.id"), nullable=True),
-        sa.Column("x", sa.Float(), nullable=True),
-        sa.Column("y", sa.Float(), nullable=True),
-        sa.Column("note", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
+        "document_work_types",
+        sa.Column("document_id", sa.Integer(), sa.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("doc_type_id", sa.Integer(), sa.ForeignKey("doc_types.id", ondelete="CASCADE"), primary_key=True),
     )
 
     # Materials and related
@@ -151,6 +139,37 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("name", sa.String(length=255), nullable=False, unique=True),
         sa.Column("parent_id", sa.Integer(), sa.ForeignKey("material_categories.id"), nullable=True),
+    )
+
+    # User and tasks (floor_materials ссылается на tasks)
+    op.create_table(
+        "user",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("login", sa.String(length=64), nullable=False),
+        sa.Column("full_name", sa.String(length=120), nullable=True),
+        sa.Column("email", sa.String(length=120), nullable=True),
+        sa.Column("phone", sa.String(length=20), nullable=True),
+        sa.Column("password_hash", sa.String(length=128), nullable=True),
+        sa.Column("role", sa.String(length=20), nullable=True, server_default="viewer"),
+        sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
+        sa.Column("last_login", sa.DateTime(), nullable=True),
+        sa.Column("refresh_token", sa.String(length=512), nullable=True),
+        sa.Column("refresh_token_expiry", sa.DateTime(), nullable=True),
+    )
+
+    op.create_index("ix_user_login", "user", ["login"], unique=True)
+    op.create_index("ix_user_email", "user", ["email"], unique=True)
+
+    op.create_table(
+        "tasks",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("floor_id", sa.Integer(), sa.ForeignKey("floors.id"), nullable=True),
+        sa.Column("assignee_id", sa.Integer(), sa.ForeignKey("user.id"), nullable=True),
+        sa.Column("title", sa.String(length=255), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("status", sa.String(length=100), nullable=True, server_default="К выполнению"),
+        sa.Column("due_date", sa.Date(), nullable=True),
+        sa.Column("created_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
     )
 
     op.create_table(
@@ -190,6 +209,24 @@ def upgrade() -> None:
         sa.Column("actual_delivery_date", sa.Date(), nullable=True),
         sa.Column("status", sa.String(length=50), nullable=True, server_default="Запланировано"),
         sa.Column("note", sa.Text(), nullable=True),
+    )
+
+    # Association: material_documents, order_documents (после floor_materials, documents, orders)
+    op.create_table(
+        "material_documents",
+        sa.Column("material_id", sa.Integer(), sa.ForeignKey("floor_materials.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("document_id", sa.Integer(), sa.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("doc_type", sa.String(length=50), nullable=True),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("is_main", sa.Boolean(), nullable=True, server_default=sa.text("false")),
+        sa.Column("uploaded_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
+        sa.Column("order", sa.Integer(), nullable=False, server_default="0"),
+    )
+
+    op.create_table(
+        "order_documents",
+        sa.Column("order_id", sa.Integer(), sa.ForeignKey("orders.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("document_id", sa.Integer(), sa.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
     )
 
     op.create_table(
@@ -329,44 +366,26 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
     )
 
-    # Tasks and users
-    op.create_table(
-        "user",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("login", sa.String(length=64), nullable=False),
-        sa.Column("full_name", sa.String(length=120), nullable=True),
-        sa.Column("email", sa.String(length=120), nullable=True),
-        sa.Column("phone", sa.String(length=20), nullable=True),
-        sa.Column("password_hash", sa.String(length=128), nullable=True),
-        sa.Column("role", sa.String(length=20), nullable=True, server_default="viewer"),
-        sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
-        sa.Column("last_login", sa.DateTime(), nullable=True),
-        sa.Column("refresh_token", sa.String(length=512), nullable=True),
-        sa.Column("refresh_token_expiry", sa.DateTime(), nullable=True),
-    )
-
-    op.create_index("ix_user_login", "user", ["login"], unique=True)
-    op.create_index("ix_user_email", "user", ["email"], unique=True)
-
-    op.create_table(
-        "tasks",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("floor_id", sa.Integer(), sa.ForeignKey("floors.id"), nullable=True),
-        sa.Column("assignee_id", sa.Integer(), sa.ForeignKey("user.id"), nullable=True),
-        sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("status", sa.String(length=100), nullable=True, server_default="К выполнению"),
-        sa.Column("due_date", sa.Date(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
-    )
+    # Seed default admin (login=admin, password=admin) for first run
+    conn = op.get_bind()
+    r = conn.execute(text('SELECT 1 FROM "user" WHERE login = :login'), {"login": "admin"})
+    if r.fetchone() is None:
+        pw_hash = bcrypt.hashpw(b"admin", bcrypt.gensalt()).decode("utf-8")
+        conn.execute(
+            text(
+                'INSERT INTO "user" (login, full_name, role, password_hash, is_active) '
+                "VALUES (:login, :name, :role, :pw, true)"
+            ),
+            {"login": "admin", "name": "Администратор", "role": "admin", "pw": pw_hash},
+        )
 
 
 def downgrade() -> None:
+    # Remove seed admin before dropping user table
+    conn = op.get_bind()
+    conn.execute(text('DELETE FROM "user" WHERE login = :login'), {"login": "admin"})
+
     # Drop in reverse order of creation to satisfy FKs
-    op.drop_table("tasks")
-    op.drop_index("ix_user_email", table_name="user")
-    op.drop_index("ix_user_login", table_name="user")
-    op.drop_table("user")
     op.drop_table("plan_tasks")
     op.drop_table("schedule_works")
     op.drop_table("work_performers")
@@ -375,19 +394,24 @@ def downgrade() -> None:
     op.drop_table("works")
     op.drop_table("movement_documents")
     op.drop_table("material_movements")
+    op.drop_table("order_documents")
+    op.drop_table("material_documents")
     op.drop_table("orders")
     op.drop_table("floor_quantities")
     op.drop_table("floor_equipment")
     op.drop_table("floor_materials")
+    op.drop_table("tasks")
+    op.drop_index("ix_user_email", table_name="user")
+    op.drop_index("ix_user_login", table_name="user")
+    op.drop_table("user")
     op.drop_table("material_categories")
     op.drop_table("marks")
     op.drop_table("plans")
+    op.drop_table("document_work_types")
     op.drop_table("documents")
+    op.drop_table("doc_types")
     op.drop_table("building_participants")
     op.drop_table("floors")
     op.drop_table("buildings")
     op.drop_table("projects")
-    op.drop_table("order_documents")
-    op.drop_table("material_documents")
-    op.drop_table("document_work_types")
 
