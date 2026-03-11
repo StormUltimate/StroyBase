@@ -1,6 +1,2 @@
-# Path: app/blueprints/equipment/__init__.py
-from flask import Blueprint
-
-equipment_bp = Blueprint("equipment", __name__, template_folder="templates")
-
-from . import routes
+# app/blueprints/buildings/__init__.py
+from . import routes  # noqa: F401

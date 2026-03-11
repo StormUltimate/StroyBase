@@ -17,7 +17,7 @@ from flask import (
     send_from_directory,
     abort,
 )
-from flask_login import login_required, current_user
+from flask_login import login_required
 from sqlalchemy import or_
 from sqlalchemy.exc import ProgrammingError
 from app.extensions import db
@@ -30,7 +30,6 @@ from app.models import (
     document_work_types,
     ScheduleWork,
     FloorMaterial,
-    MaterialCategory,
     FloorQuantity,
 )
 from werkzeug.utils import secure_filename
@@ -134,7 +133,6 @@ def edit_building(building_id):
 def delete_building(building_id):
     building = Building.query.get_or_404(building_id)
     project_id = building.project_id
-    name = building.name
 
     db.session.delete(building)
     db.session.commit()

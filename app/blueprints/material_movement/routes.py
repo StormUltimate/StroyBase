@@ -193,7 +193,9 @@ def api_buildings():
                     b.name[:100] if b.name else None,
                 )
             items.append({"id": b.id, "project_id": b.project_id, "name": name})
-        items = _dedupe_by_id(items, id_key="id", fallback_name_template="Строение {id}")
+        items = _dedupe_by_id(
+            items, id_key="id", fallback_name_template="Строение {id}"
+        )
         items.sort(key=lambda x: (x.get("name") or "").lower())
         return jsonify(items)
     except ProgrammingError:
@@ -295,7 +297,7 @@ def index():
         )
 
     projects = Project.query.order_by(Project.name).all()
-    # Для модалки строения и этажи не отдаём в HTML — подгружаются по API (api_buildings, api_floors) с санитизацией названий, без артефактов
+    # Для модалки строения и этажи подгружаются по API (api_buildings, api_floors)
     projects_display = [
         (p.id, _sanitize_display_name(p.name, f"Проект {p.id}")) for p in projects
     ]
@@ -351,7 +353,7 @@ def stock():
 @bp.route("/create", methods=["POST"])
 @login_required
 def create_movement():
-    """Создание записи о движении материала. project_id обязателен, building_id/floor_id опциональны. Строения и этажи в модалке подгружаются по API с каскадной фильтрацией."""
+    """Создание записи о движении. project_id обязателен, building_id/floor_id опциональны."""
     form = MaterialMovementForm()
     projects = Project.query.order_by(Project.name).all()
     form.project_id.choices = [("", "— Выберите проект —")] + [
@@ -403,7 +405,7 @@ def create_movement():
         db.session.add(movement)
         db.session.commit()
         flash("Запись о движении материала успешно создана", "success")
-    except ProgrammingError as e:
+    except ProgrammingError:
         db.session.rollback()
         flash(
             "Ошибка базы данных. Убедитесь, что таблица material_movements создана (см. комментарий в models.py).",
@@ -577,7 +579,7 @@ def attach_movement_document(movement_id):
 @login_required
 def detach_movement_document(movement_id, document_id):
     """Отвязать документ от записи о движении (запись Document не удаляется)."""
-    movement = MaterialMovement.query.get_or_404(movement_id)
+    MaterialMovement.query.get_or_404(movement_id)
     link = MovementDocument.query.filter_by(
         movement_id=movement_id, document_id=document_id
     ).first_or_404()
@@ -591,7 +593,7 @@ def detach_movement_document(movement_id, document_id):
 @login_required
 def serve_movement_document(movement_id, document_id):
     """Отдать файл документа, привязанного к движению материала."""
-    movement = MaterialMovement.query.get_or_404(movement_id)
+    MaterialMovement.query.get_or_404(movement_id)
     link = MovementDocument.query.filter_by(
         movement_id=movement_id, document_id=document_id
     ).first_or_404()

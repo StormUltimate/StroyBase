@@ -43,7 +43,7 @@ def main():
 
     app = create_app()
     with app.app_context():
-        works = Work.query.filter(Work.volume != None, Work.volume > 0).all()
+        works = Work.query.filter(Work.volume.isnot(None), Work.volume > 0).all()
         added = 0
         skipped = 0
         for w in works:

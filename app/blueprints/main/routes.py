@@ -20,7 +20,6 @@ from app.models import (
     MaterialMovement,
     MovementDocument,
     ScheduleWork,
-    WorkPerformer,
     Work,
     WorkProgress,
 )

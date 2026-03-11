@@ -8,7 +8,6 @@
 import argparse
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -37,7 +36,6 @@ def _parse_args():
 
 
 def run(app, dry_run=False, delete=False, reassign_project_id=None):
-    from sqlalchemy import text
     from app.extensions import db
     from app.models import (
         Project,

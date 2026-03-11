@@ -11,7 +11,8 @@ _JUNK_ONLY_DIGITS = re.compile(r"^[\d\s\-.,()\/]+$")
 # Шаблоны сломанных префиксов (после санитизации): «Строение» / «Этаж» в неправильной кодировке или латиницей.
 # Результат санитизации «Љ®аЇгб 6» → «а гб 6» (кириллица а, г, б проходят regex).
 _RE_BROKEN_KORPUS = re.compile(
-    r"^(?:а\s*г\s*б|а\s*гб|jb\s*@?\s*air|korpus|корпус|stroenie|строение)\s*(\d*)\s*$", re.UNICODE
+    r"^(?:а\s*г\s*б|а\s*гб|jb\s*@?\s*air|korpus|корпус|stroenie|строение)\s*(\d*)\s*$",
+    re.UNICODE,
 )
 _RE_BROKEN_ETAZH = re.compile(
     r"^(?:т\s*аж|аж|этаж|etazh)\s*(\d*)\s*$", re.IGNORECASE | re.UNICODE

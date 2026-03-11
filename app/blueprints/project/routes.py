@@ -17,7 +17,7 @@ from flask import (
 from flask_login import login_required
 from app.extensions import db
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy import or_, and_, text, bindparam
+from sqlalchemy import or_, text, bindparam
 from types import SimpleNamespace
 from app.models import (
     Project,
@@ -33,7 +33,6 @@ from app.models import (
     WorkPerformer,
     Mark,
     FloorMaterial,
-    MaterialCategory,
     MaterialMovement,
     Work,
     WorkProgress,
@@ -916,7 +915,7 @@ def _build_works_aggregated_by_name(
 @login_required
 def works_summary_json(project_id):
     """JSON: сводка по объёмам (works_summary_project, works_summary_buildings) для обновления блока после update_daily."""
-    project = Project.query.get_or_404(project_id)
+    Project.query.get_or_404(project_id)
     buildings = (
         Building.query.filter_by(project_id=project_id).order_by(Building.name).all()
     )
@@ -1118,14 +1117,6 @@ def add_work(project_id):
         "Инженерные системы",
     )
     if category not in allowed_categories:
-        category = work.category or "Общестроительные работы"
-    category = (request.form.get("category") or "").strip()
-    allowed_categories = (
-        "Демонтажные работы",
-        "Общестроительные работы",
-        "Инженерные системы",
-    )
-    if category not in allowed_categories:
         category = "Общестроительные работы"
     initial_executed = None
     ie_raw = request.form.get("initial_executed")
@@ -1191,6 +1182,14 @@ def edit_work(project_id, work_id):
     unit = (request.form.get("unit") or "").strip()
     planned_str = (request.form.get("planned_date") or "").strip()
     planned_date = _parse_date_project(planned_str) if planned_str else None
+    category = (request.form.get("category") or "").strip()
+    allowed_categories = (
+        "Демонтажные работы",
+        "Общестроительные работы",
+        "Инженерные системы",
+    )
+    if category not in allowed_categories:
+        category = work.category or "Общестроительные работы"
     initial_executed = None
     ie_raw = request.form.get("initial_executed")
     if ie_raw not in (None, ""):
@@ -1234,7 +1233,7 @@ def delete_work(project_id, work_id):
         db.session.delete(work)
         db.session.commit()
         flash("Работа удалена.", "success")
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         flash("Ошибка удаления.", "danger")
     next_url = request.form.get("next", "").strip()
@@ -1682,7 +1681,7 @@ def workforce_day(project_id, date_str):
 @project_bp.route("/<int:project_id>/workforce/day/save", methods=["POST"])
 @login_required
 def workforce_day_save(project_id):
-    """POST: JSON { date, records: [ { contractor_name, workers_count, shift_hours, shift_hours_night, notes } ] }. День и ночь макс. 12 ч каждый, всего 24 ч в сутки."""
+    """POST: JSON { date, records: [ { contractor_name, workers_count, shift_hours, shift_hours_night, notes } ] }."""
     project = Project.query.get_or_404(project_id)
     data = request.get_json(silent=True) or {}
     date_str = data.get("date") or request.form.get("date")
@@ -2042,7 +2041,7 @@ def upload_floor_plan(floor_id):
         flash("Выберите файл и тип плана", "danger")
         return redirect(url_for("floors.view_floor", floor_id=floor.id))
 
-    doc_type = DocType.query.get_or_404(doc_type_id)
+    DocType.query.get_or_404(doc_type_id)
     filename = secure_filename(file.filename)
     plan_dir = os.path.join(
         current_app.root_path, "static", "media", "plans", str(floor.id)

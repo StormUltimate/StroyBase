@@ -1010,7 +1010,7 @@ def add_mark(floor_id, plan_id):
 @bp.route("/floor/<int:floor_id>/upload_plan", methods=["POST"])
 @login_required
 def upload_floor_plan(floor_id):
-    floor = Floor.query.get_or_404(floor_id)
+    Floor.query.get_or_404(floor_id)
     file = request.files.get("plan_file")
     custom_name = request.form.get("custom_name", "Новый план").strip()
     page_number = request.form.get("page_number", type=int, default=1)

@@ -637,7 +637,7 @@ class Order(db.Model):
 # CREATE INDEX IF NOT EXISTS idx_material_movements_floor ON material_movements(floor_id);
 # CREATE INDEX IF NOT EXISTS idx_material_movements_date ON material_movements(movement_date);
 class MaterialMovement(db.Model):
-    """Запись о движении материала: приход, расход, перемещение. Привязка к проекту обязательна, к строению/этажу — опциональна. Документы (накладная, УПД, сертификаты) — через movement_document_links."""
+    """Запись о движении материала: приход, расход, перемещение. Привязка к проекту обязательна."""
 
     __tablename__ = "material_movements"
     id = db.Column(db.Integer, primary_key=True)

@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import date
 
 
 def run_export(project_id: int, output_path: str):
