@@ -139,6 +139,20 @@ Crypto donations (USDT, public wallets only):
 | Bybit    | ERC20  | `0xd5cf1c5351129875620c40760bbac07771ff860a`        |
 Donations are **voluntary and non‑refundable**.  
 If you’d like to be mentioned, open a Discussion or Issue after your donation and we’ll add you to the acknowledgements list (if you agree to be public).
+## Коммерческое использование и поддержка
+
+StroyBase распространяется бесплатно под лицензией MIT — берите, используйте, модифицируйте.
+
+Если требуется:
+• глубокая кастомизация под ваши процессы
+• интеграция с 1С, Битрикс, ERP, бухгалтерией
+• приоритетная поддержка и SLA
+• установка «под ключ» на вашем сервере / в облаке
+• обучение сотрудников / аудит существующего внедрения
+
+→ пишите в личные сообщения (Telegram @ваш_ник) или создавайте Issue с меткой [коммерческое].
+
+Я открыт к сотрудничеству с подрядчиками, застройщиками и девелоперами.
 
 ## English
 
