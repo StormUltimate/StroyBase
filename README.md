@@ -59,7 +59,7 @@ v0.9.0 — публичная бета. Основной функционал (�
 
 **Требования:** Python 3.10+ в PATH, PostgreSQL с созданной базой `StroyBase`.
 
-1. Клонируйте репозиторий и перейдите в папку проекта.
+1. Клонируйте репозиторий и перейдите в папку проекта. git clone https://github.com/StormUltimate/StroyBase.git
 2. При необходимости задайте переменные окружения (или отредактируйте строки в `autosetup.bat`):
    ```cmd
    set DATABASE_URL=postgresql://user:password@localhost:5432/StroyBase
